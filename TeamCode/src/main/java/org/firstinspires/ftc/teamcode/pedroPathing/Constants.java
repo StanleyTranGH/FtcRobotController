@@ -29,8 +29,7 @@ public class Constants {
             .forwardPodY(2.83464567) // DONE: CHANGE POD POSITIONS
             .strafePodX(6.41732283)
             .distanceUnit(DistanceUnit.INCH)
-            .hardwareMapName("pi." +
-                    "npoint") // DONE: NAME CONFIGURATION TO THIS NAME
+            .hardwareMapName("pinpoint") // DONE: NAME CONFIGURATION TO THIS NAME
             .encoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD)
             .forwardEncoderDirection(GoBildaPinpointDriver.EncoderDirection.REVERSED)
             .strafeEncoderDirection(GoBildaPinpointDriver.EncoderDirection.FORWARD)
