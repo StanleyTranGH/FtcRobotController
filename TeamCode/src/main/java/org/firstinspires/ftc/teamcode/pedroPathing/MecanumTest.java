@@ -1,12 +1,14 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
-@TeleOp(name = "Mecanum Test")
+@TeleOp(name = "Mecanum Test", group = "test")
 public class MecanumTest extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
@@ -17,6 +19,7 @@ public class MecanumTest extends LinearOpMode {
         DcMotor frontRightMotor = hardwareMap.dcMotor.get("frontright");
         DcMotor backRightMotor = hardwareMap.dcMotor.get("backright");
         Servo horiSlide = hardwareMap.servo.get("horiSlide");
+        CRServo intakeServo = hardwareMap.crservo.get("intakeServo");
 
         boolean wasA = false;
         boolean slideIsOut = false;
@@ -44,6 +47,8 @@ public class MecanumTest extends LinearOpMode {
             double rx = gamepad1.right_stick_x;
 
             boolean isA = gamepad1.a;
+            boolean isX = gamepad2.x;
+            boolean isY = gamepad2.y;
 
             if(isA && !wasA) {
                 if (!slideIsOut) {
@@ -53,6 +58,16 @@ public class MecanumTest extends LinearOpMode {
                     slidePosition = slideIn;
                     slideIsOut = false;
                 }
+            }
+
+            if (isX) {
+                intakeServo.setDirection(DcMotorSimple.Direction.FORWARD);
+                intakeServo.setPower(1);
+            } else if (isY) {
+                intakeServo.setDirection(DcMotorSimple.Direction.REVERSE);
+                intakeServo.setPower(1);
+            } else {
+                intakeServo.setPower(0);
             }
 
             // Denominator is the largest motor power (absolute value) or 1
