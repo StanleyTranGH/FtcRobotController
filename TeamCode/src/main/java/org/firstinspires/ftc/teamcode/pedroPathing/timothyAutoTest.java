@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -38,8 +39,7 @@ import java.util.List;
 
 import java.util.List;
 
-
-
+@Disabled
 @Autonomous(name = "new auto test", group = "test")
 public class timothyAutoTest extends OpMode {
 
