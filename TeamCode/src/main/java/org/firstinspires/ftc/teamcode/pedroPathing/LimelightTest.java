@@ -8,7 +8,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import java.util.List;
 
-@TeleOp(name = "AprilTag ID Detector", group = "Vision")
+@TeleOp(name = "AprilTag ID Detector", group = "test")
 public class LimelightTest extends OpMode {
 
     private Limelight3A limelight;
