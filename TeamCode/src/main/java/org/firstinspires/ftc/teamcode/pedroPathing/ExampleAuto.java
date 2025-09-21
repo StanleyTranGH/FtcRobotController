@@ -9,12 +9,30 @@ import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+
+import java.util.List;
+
 @Autonomous(name = "Example Auto", group = "Examples")
 public class ExampleAuto extends OpMode {
 
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
 
+    private Limelight3A limelight;
+    String motif = "Not Detected Yet";
+    int detectedID;
+    int obeliskID = 0; // Having separate detectedID and obeliskID prevents goal targeting April Tags from being mistaken as obelisk
+    /*
+    21: GPP
+    22: PGP
+    23: PPG
+    */
+    public static int colorAlliance = 0; // 1: Red 2: Blue (no use yet, need to add mirror)
     private int pathState;
     private final Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
@@ -26,7 +44,7 @@ public class ExampleAuto extends OpMode {
     private final Pose collect2Pose = new Pose(120, 60, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 32, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(120, 32, Math.toRadians(0)); // Collect third set of artifacts
-    private final Pose parkPose = new Pose(130, 12, Math.toRadians(180)); // Park Pose of our robot.
+    private final Pose parkPose = new Pose(86, 50, Math.toRadians(0)); // Park Pose of our robot.
 
     PathChain scanObelisk, scorePreload, grabPickup1, collectPickup1, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, park;
      void buildPaths() {
@@ -101,8 +119,40 @@ public class ExampleAuto extends OpMode {
         switch (pathState) {
             case 0:
                 follower.followPath(scanObelisk);
-                setPathState(1);
+                setPathState(12);
                 break;
+            case 12:
+
+                /* DONE: SCAN MOTIF */
+
+                LLResult result = limelight.getLatestResult();
+
+                if (result != null && result.isValid()) {
+                    // Valid target detected
+                    List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+                    for (LLResultTypes.FiducialResult fiducial : fiducials) {
+                        detectedID = fiducial.getFiducialId();
+                    }
+
+                    if(detectedID == 21) {
+                        obeliskID = detectedID;
+                        motif = "GPP (Green Purple Purple)";
+                    } else if(detectedID == 22) {
+                        obeliskID = detectedID;
+                        motif = "PGP (Purple Green Purple)";
+                    } else if(detectedID == 23) {
+                        obeliskID = detectedID;
+                        motif = "PPG (Purple Purple Green)";
+                    }
+                }
+
+                // TODO: ADJUST ELAPSED TIME SECONDS OR CHANGE IF NEEDED
+                if(obeliskID != 0 || pathTimer.getElapsedTimeSeconds() > 5 && !follower.isBusy()) {
+                    follower.followPath(scorePreload);
+                    setPathState(1);
+                }
+                break;
+
             case 1:
 
             /* You could check for
@@ -233,10 +283,11 @@ public class ExampleAuto extends OpMode {
         autonomousPathUpdate();
 
         // Feedback to Driver Hub for debugging
-        telemetry.addData("path state", pathState);
+        telemetry.addData("Path State", pathState);
         telemetry.addData("x", follower.getPose().getX());
         telemetry.addData("y", follower.getPose().getY());
-        telemetry.addData("heading", follower.getPose().getHeading());
+        telemetry.addData("Heading", follower.getPose().getHeading());
+        telemetry.addData("Detected Motif", motif);
         telemetry.update();
     }
 
@@ -252,11 +303,37 @@ public class ExampleAuto extends OpMode {
         buildPaths();
         follower.setStartingPose(startPose);
 
+        /* Limelight Stuff */
+        // Initialize the Limelight
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
+        // Ensure we're using pipeline 0 (your AprilTag pipeline)
+        limelight.pipelineSwitch(0);
+
+        // Start the Limelight
+        limelight.start();
+
+
     }
 
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
-    public void init_loop() {}
+    public void init_loop() {
+        telemetry.addData("Status", "Initialized");
+        telemetry.addLine("Press A for Red and B for Blue");
+
+        if(gamepad1.a) {
+            colorAlliance = 1; // Red
+            telemetry.addData("Selected Color", "Red");
+        } else if(gamepad1.b) {
+            colorAlliance = 2; // Blue
+            telemetry.addData("Selected Color", "Blue");
+        } else if (colorAlliance == 0) {
+            telemetry.addData("Selected Color", "No Color Selected");
+        }
+
+        telemetry.update();
+    }
 
     /** This method is called once at the start of the OpMode.
      * It runs all the setup actions, including building paths and starting the path system **/
