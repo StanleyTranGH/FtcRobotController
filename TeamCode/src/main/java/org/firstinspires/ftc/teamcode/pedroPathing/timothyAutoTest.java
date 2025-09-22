@@ -42,7 +42,16 @@ import java.util.List;
 @Disabled
 @Autonomous(name = "new auto test", group = "test")
 public class timothyAutoTest extends OpMode {
+    @Override
+    public void init() {
+        
+    }
 
+    @Override
+    public void loop() {
+
+    }
+/*
     private Limelight3A limelight;
 
     private final Pose startPose = new Pose(126.7, 118.4, Math.toRadians(126));
@@ -201,10 +210,17 @@ public class timothyAutoTest extends OpMode {
     }
 
     @Override
+    public void loop() {
+
+    }
+
+    @Override
     public void stop() {
         // Stop the Limelight when the OpMode is stopped
         if (limelight != null) {
             limelight.stop();
         }
     }
+
+ */
 }

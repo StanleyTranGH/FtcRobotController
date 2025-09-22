@@ -20,9 +20,11 @@ import java.util.function.Supplier;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 @Configurable
-@TeleOp(name = "Example Teleop", group = "Examples")
+@TeleOp(name = "Example Teleop Aim", group = "Examples")
 public class ExampleTeleopAim extends OpMode {
     private Follower follower;
     public static Pose startingPose = new Pose(86, 50, Math.toRadians(0)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
@@ -35,7 +37,10 @@ public class ExampleTeleopAim extends OpMode {
     // Limelight fields
     private Limelight3A limelight;
     private int aimTagID;
-    private double kP_Aim = 0.03; // proportional gain for turning
+    private double kP_Aim = -0.03; // proportional gain for turning
+
+    // Mechanisms
+    DcMotor intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
 
     @Override
     public void init() {
@@ -129,10 +134,13 @@ public class ExampleTeleopAim extends OpMode {
 
         //Optional adjust slowMode strength
         if (gamepad1.xWasPressed()) {
-            slowModeMultiplier += 0.25;
-        }
-        if (gamepad2.yWasPressed()) {
-            slowModeMultiplier -= 0.25;
+            intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
+            intakeMotor.setPower(1);
+        } else if (gamepad1.yWasPressed()) {
+            intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+            intakeMotor.setPower(1);
+        } else if (gamepad1.bWasPressed()) {
+            intakeMotor.setPower(0);
         }
 
         telemetryM.debug("position", follower.getPose());

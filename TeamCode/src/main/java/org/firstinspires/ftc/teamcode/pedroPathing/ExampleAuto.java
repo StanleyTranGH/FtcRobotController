@@ -44,7 +44,7 @@ public class ExampleAuto extends OpMode {
     private final Pose collect2Pose = new Pose(120, 60, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 32, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(120, 32, Math.toRadians(0)); // Collect third set of artifacts
-    private final Pose parkPose = new Pose(86, 50, Math.toRadians(0)); // Park Pose of our robot.
+    private final Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
     PathChain scanObelisk, scorePreload, grabPickup1, collectPickup1, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, park;
      void buildPaths() {
