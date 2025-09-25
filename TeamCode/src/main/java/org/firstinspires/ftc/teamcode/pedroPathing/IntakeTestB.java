@@ -3,13 +3,12 @@ package org.firstinspires.ftc.teamcode.pedroPathing;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Servo;
 
-@TeleOp(name = "Intake Test", group = "test")
-public class IntakeTest extends LinearOpMode {
+@Disabled
+@TeleOp(name = "Intake Test B", group = "test")
+public class IntakeTestB extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         // Declare our motors

@@ -14,7 +14,6 @@ import com.pedropathing.paths.PathChain;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -23,11 +22,13 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
+import com.arcrobotics.ftclib.controller.PIDFController;
+
 @Configurable
 @TeleOp(name = "Example Teleop Aim", group = "Examples")
 public class ExampleTeleopAim extends OpMode {
     private Follower follower;
-    public static Pose startingPose = new Pose(86, 50, Math.toRadians(0)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+    public static Pose startingPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
     private boolean automatedDrive;
     private Supplier<PathChain> pathChain;
     private TelemetryManager telemetryM;
@@ -37,10 +38,10 @@ public class ExampleTeleopAim extends OpMode {
     // Limelight fields
     private Limelight3A limelight;
     private int aimTagID;
-    private double kP_Aim = -0.03; // proportional gain for turning
+    private PIDFController aimController = new PIDFController(0.03, 0.0, 0.002, 0.0); // kP, kI, kD, kF
 
     // Mechanisms
-    DcMotor intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+    DcMotor intakeMotor;
 
     @Override
     public void init() {
@@ -50,14 +51,24 @@ public class ExampleTeleopAim extends OpMode {
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
         // Limelight init
+        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0); // AprilTag pipeline
         limelight.start();
 
-        pathChain = () -> follower.pathBuilder() //Lazy Curve Generation
-                .addPath(new Path(new BezierLine(follower::getPose, new Pose(45, 98))))
-                .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(45), 0.8))
-                .build();
+        if(colorAlliance == 2) {
+            // Set lazy curve to blue alliance base if on team blue
+            pathChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                    .addPath(new Path(new BezierLine(follower::getPose, new Pose(104, 33))))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
+                    .build();
+        } else {
+            // Set lazy curve to red alliance by default
+            pathChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                    .addPath(new Path(new BezierLine(follower::getPose, new Pose(39, 33))))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
+                    .build();
+        }
     }
 
     @Override
@@ -88,9 +99,10 @@ public class ExampleTeleopAim extends OpMode {
                         // Deadband to prevent jitter
                         if (Math.abs(tx) < 1.0) {
                             tx = 0;
+                            aimController.reset();
                         }
 
-                        turn = kP_Aim * tx;
+                        turn = aimController.calculate(tx, 0); // target setpoint = 0 (centered tag)
                     } else {
                         turn = -gamepad1.right_stick_x;
                     }
@@ -143,9 +155,10 @@ public class ExampleTeleopAim extends OpMode {
             intakeMotor.setPower(0);
         }
 
-        telemetryM.debug("position", follower.getPose());
-        telemetryM.debug("velocity", follower.getVelocity());
-        telemetryM.debug("automatedDrive", automatedDrive);
+        telemetryM.debug("Current Alliance", colorAlliance);
+        telemetryM.debug("Position", follower.getPose());
+        telemetryM.debug("Velocity", follower.getVelocity());
+        telemetryM.debug("Automated Drive", automatedDrive);
     }
 }
 

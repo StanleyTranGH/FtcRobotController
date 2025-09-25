@@ -14,6 +14,8 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class ExampleAuto extends OpMode {
     private Timer pathTimer, actionTimer, opmodeTimer;
 
     private Limelight3A limelight;
+    DcMotor intakeMotor;
     String motif = "Not Detected Yet";
     int detectedID;
     int obeliskID = 0; // Having separate detectedID and obeliskID prevents goal targeting April Tags from being mistaken as obelisk
@@ -70,6 +73,7 @@ public class ExampleAuto extends OpMode {
          collectPickup1 = follower.pathBuilder()
                  .addPath(new BezierLine(pickup1Pose, collect1Pose))
                  .setTangentHeadingInterpolation()
+                 .setVelocityConstraint(12) // TODO: CHANGE INTAKING SPEED AS NEEDED (inches/second)
                  .build();
 
         /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
@@ -86,6 +90,7 @@ public class ExampleAuto extends OpMode {
          collectPickup2 = follower.pathBuilder()
                  .addPath(new BezierLine(pickup2Pose, collect2Pose))
                  .setTangentHeadingInterpolation()
+                 .setVelocityConstraint(12) // TODO: CHANGE INTAKING SPEED AS NEEDED (inches/second)
                  .build();
 
         /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
@@ -102,6 +107,7 @@ public class ExampleAuto extends OpMode {
          collectPickup3 = follower.pathBuilder()
                  .addPath(new BezierLine(pickup3Pose, collect3Pose))
                  .setTangentHeadingInterpolation()
+                 .setVelocityConstraint(12) // TODO: CHANGE INTAKING SPEED AS NEEDED (inches/second)
                  .build();
 
         /* This is our scorePickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
@@ -114,6 +120,7 @@ public class ExampleAuto extends OpMode {
                 .addPath(new BezierLine(scorePose, parkPose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), parkPose.getHeading())
                 .build();
+
     }
     public void autonomousPathUpdate() {
         switch (pathState) {
@@ -145,8 +152,12 @@ public class ExampleAuto extends OpMode {
                         motif = "PPG (Purple Purple Green)";
                     }
                 }
+                if (pathTimer.getElapsedTimeSeconds() > 5 && !follower.isBusy()) {
+                    obeliskID = 23;
+                    motif = "Couldn't Detect! Guessing PPG";
+                }
 
-                // TODO: ADJUST ELAPSED TIME SECONDS OR CHANGE IF NEEDED
+                // DONE: ADJUST ELAPSED TIME SECONDS OR CHANGE IF NEEDED
                 if(obeliskID != 0 || pathTimer.getElapsedTimeSeconds() > 5 && !follower.isBusy()) {
                     follower.followPath(scorePreload);
                     setPathState(1);
@@ -166,14 +177,24 @@ public class ExampleAuto extends OpMode {
                     /* TODO: SHOOT PRELOAD BALLS */
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are grabbing the sample */
-                    follower.followPath(grabPickup1,true);
-                    setPathState(2);
+                    if(obeliskID == 23) {
+                        follower.followPath(grabPickup1, true);
+                        setPathState(2);
+                    }
+                    else if(obeliskID == 22) {
+                        follower.followPath(grabPickup2, true);
+                        setPathState(5);
+                    } else if(obeliskID == 21) {
+                        follower.followPath(grabPickup3, true);
+                        setPathState(8);
+                    }
                 }
                 break;
             case 2:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
-                    /* TODO: ACTIVATE INTAKE */
+                    /* DONE: ACTIVATE INTAKE */
+                    intakeMotor.setPower(1);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(collectPickup1,true);
@@ -183,7 +204,8 @@ public class ExampleAuto extends OpMode {
             case 3:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
-                    /* TODO: DEACTIVATE INTAKE (ALSO BALL SORTING IF APPLICABLE) */
+                    /* DONE: DEACTIVATE INTAKE (ALSO BALL SORTING IF APPLICABLE) */
+                    intakeMotor.setPower(0);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup1,true);
@@ -196,14 +218,20 @@ public class ExampleAuto extends OpMode {
                     /* TODO: SHOOT BALLS */
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are grabbing the sample */
-                    follower.followPath(grabPickup2,true);
-                    setPathState(5);
+                    if(obeliskID == 23 || obeliskID == 21) {
+                        follower.followPath(grabPickup2, true);
+                        setPathState(5);
+                    } else if(obeliskID == 22) {
+                        follower.followPath(grabPickup3, true);
+                        setPathState(8);
+                    }
                 }
                 break;
             case 5:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
-                    /* TODO: ACTIVATE INTAKE */
+                    /* DONE: ACTIVATE INTAKE */
+                    intakeMotor.setPower(1);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(collectPickup2,true);
@@ -213,7 +241,8 @@ public class ExampleAuto extends OpMode {
             case 6:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
-                    /* TODO: DEACTIVATE INTAKE (ALSO BALL SORTING IF APPLICABLE) */
+                    /* DONE: DEACTIVATE INTAKE (ALSO BALL SORTING IF APPLICABLE) */
+                    intakeMotor.setPower(0);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup2, true);
@@ -226,14 +255,23 @@ public class ExampleAuto extends OpMode {
                     /* TODO: SHOOT BALLS */
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are grabbing the sample */
-                    follower.followPath(grabPickup3,true);
-                    setPathState(8);
+                    if(obeliskID == 23) {
+                        follower.followPath(grabPickup3, true);
+                        setPathState(8);
+                    } else if(obeliskID == 22) {
+                        follower.followPath(grabPickup1, true);
+                        setPathState(2);
+                    } else if(obeliskID == 21) {
+                        follower.followPath(park, true);
+                        setPathState(11);
+                    }
                 }
                 break;
             case 8:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup3Pose's position */
                 if(!follower.isBusy()) {
-                    /* TODO: ACTIVATE INTAKE */
+                    /* DONE: ACTIVATE INTAKE */
+                    intakeMotor.setPower(1);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(collectPickup3, true);
@@ -243,7 +281,8 @@ public class ExampleAuto extends OpMode {
             case 9:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
-                    /* TODO: DEACTIVATE INTAKE (ALSO BALL SORTING IF APPLICABLE) */
+                    /* DONE: DEACTIVATE INTAKE (ALSO BALL SORTING IF APPLICABLE) */
+                    intakeMotor.setPower(0);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup3, true);
@@ -256,8 +295,13 @@ public class ExampleAuto extends OpMode {
                     /* TODO: SHOOT BALLS */
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are grabbing the sample */
-                    follower.followPath(park,true);
-                    setPathState(11);
+                    if(obeliskID == 23 || obeliskID == 22) {
+                        follower.followPath(park, true);
+                        setPathState(11);
+                    } else if(obeliskID == 21) {
+                        follower.followPath(grabPickup1, true);
+                        setPathState(2);
+                    }
                 }
                 break;
             case 11:
@@ -274,22 +318,6 @@ public class ExampleAuto extends OpMode {
         pathState = pState;
         pathTimer.resetTimer();
     }
-    /** This is the main loop of the OpMode, it will run repeatedly after clicking "Play". **/
-    @Override
-    public void loop() {
-
-        // These loop the movements of the robot, these must be called continuously in order to work
-        follower.update();
-        autonomousPathUpdate();
-
-        // Feedback to Driver Hub for debugging
-        telemetry.addData("Path State", pathState);
-        telemetry.addData("x", follower.getPose().getX());
-        telemetry.addData("y", follower.getPose().getY());
-        telemetry.addData("Heading", follower.getPose().getHeading());
-        telemetry.addData("Detected Motif", motif);
-        telemetry.update();
-    }
 
     /** This method is called once at the init of the OpMode. **/
     @Override
@@ -304,8 +332,10 @@ public class ExampleAuto extends OpMode {
         follower.setStartingPose(startPose);
 
         /* Limelight Stuff */
-        // Initialize the Limelight
+        // Initialize Hardware
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         // Ensure we're using pipeline 0 (your AprilTag pipeline)
         limelight.pipelineSwitch(0);
@@ -324,9 +354,13 @@ public class ExampleAuto extends OpMode {
 
         if(gamepad1.a) {
             colorAlliance = 1; // Red
-            telemetry.addData("Selected Color", "Red");
         } else if(gamepad1.b) {
             colorAlliance = 2; // Blue
+        }
+
+        if (colorAlliance == 1) {
+            telemetry.addData("Selected Color", "Red");
+        } else if (colorAlliance == 2) {
             telemetry.addData("Selected Color", "Blue");
         } else if (colorAlliance == 0) {
             telemetry.addData("Selected Color", "No Color Selected");
@@ -341,6 +375,23 @@ public class ExampleAuto extends OpMode {
     public void start() {
         opmodeTimer.resetTimer();
         setPathState(0);
+    }
+
+    /** This is the main loop of the OpMode, it will run repeatedly after clicking "Play". **/
+    @Override
+    public void loop() {
+
+        // These loop the movements of the robot, these must be called continuously in order to work
+        follower.update();
+        autonomousPathUpdate();
+
+        // Feedback to Driver Hub for debugging
+        telemetry.addData("Path State", pathState);
+        telemetry.addData("x", follower.getPose().getX());
+        telemetry.addData("y", follower.getPose().getY());
+        telemetry.addData("Heading", follower.getPose().getHeading());
+        telemetry.addData("Detected Motif", motif);
+        telemetry.update();
     }
 
     /** We do not use this because everything should automatically disable **/
