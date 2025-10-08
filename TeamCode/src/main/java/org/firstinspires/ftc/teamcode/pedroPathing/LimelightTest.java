@@ -8,8 +8,6 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import java.util.List;
-
-@Disabled
 @TeleOp(name = "AprilTag ID Detector", group = "test")
 public class LimelightTest extends OpMode {
 
