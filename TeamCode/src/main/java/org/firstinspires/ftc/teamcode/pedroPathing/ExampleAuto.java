@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public class ExampleAuto extends OpMode {
     private Timer pathTimer, actionTimer, opmodeTimer;
 
     private Limelight3A limelight;
-    DcMotor intakeMotor;
+    DcMotorEx intakeMotor;
     String motif = "Not Detected Yet";
     int detectedID;
     int obeliskID = 0; // Having separate detectedID and obeliskID prevents goal targeting April Tags from being mistaken as obelisk
@@ -40,11 +41,11 @@ public class ExampleAuto extends OpMode {
     private final Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
     private final Pose scorePose = new Pose(86, 84, Math.toRadians(45)); // Scoring Pose of our robot.
-    private final Pose pickup1Pose = new Pose(100, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
-    private final Pose collect1Pose = new Pose(120, 84, Math.toRadians(0)); // Collect first set of artifacts
+    private final Pose pickup1Pose = new Pose(100, 81, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
+    private final Pose collect1Pose = new Pose(120, 81, Math.toRadians(0)); // Collect first set of artifacts
 
-    private final Pose pickup2Pose = new Pose(100, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
-    private final Pose collect2Pose = new Pose(120, 60, Math.toRadians(0)); // Collect second set of artifacts
+    private final Pose pickup2Pose = new Pose(100, 57, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
+    private final Pose collect2Pose = new Pose(120, 57, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 32, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(120, 32, Math.toRadians(0)); // Collect third set of artifacts
     private final Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
@@ -212,7 +213,7 @@ public class ExampleAuto extends OpMode {
             case 4:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (pathTimer.getElapsedTimeSeconds() > 1) {
-                    intakeMotor.setPower(0);
+
                 }
                 if(!follower.isBusy()) {
                     /* TODO: SHOOT BALLS */
@@ -251,7 +252,7 @@ public class ExampleAuto extends OpMode {
             case 7:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (pathTimer.getElapsedTimeSeconds() > 1) {
-                    intakeMotor.setPower(0);
+
                 }
                 if(!follower.isBusy()) {
                     /* TODO: SHOOT BALLS */
@@ -293,7 +294,7 @@ public class ExampleAuto extends OpMode {
             case 10:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (pathTimer.getElapsedTimeSeconds() > 1) {
-                    intakeMotor.setPower(0);
+
                 }
                 if(!follower.isBusy()) {
                     /* TODO: SHOOT BALLS */
@@ -338,8 +339,8 @@ public class ExampleAuto extends OpMode {
         /* Limelight Stuff */
         // Initialize Hardware
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
-        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
+        intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         // Ensure we're using pipeline 0 (your AprilTag pipeline)
         limelight.pipelineSwitch(0);

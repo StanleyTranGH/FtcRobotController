@@ -50,12 +50,13 @@ public class ExampleTeleopAim extends OpMode {
     Servo launcherServo;
     ElapsedTime feederTimer = new ElapsedTime();
 
-    final double launcherServoDown = 0.0;
-    final double launcherServoUp = 0.5; // TODO: SET THESE VALUES TO PROPER SERVO POSITION
-    final double LAUNCHER_TARGET_VELOCITY = 2000; // TODO: FIND DESIRED LAUNDER VELOCITY
-    final double LAUNCHER_MIN_VELOCITY = 1950;
+    final double launcherServoDown = 0.16;
+    final double launcherServoUp = 0.45; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double LAUNCHER_TARGET_VELOCITY = 1400; // DONE: FIND DESIRED LAUNDER VELOCITY
+    final double LAUNCHER_MIN_VELOCITY = 1350;
     final double STOP_SPEED = 0.0;
-    final double MAX_FEED_TIME = 4.0;
+
+    final double MAX_FEED_TIME = 0.3;
     private enum LaunchState {
         IDLE,
         SPIN_UP,
@@ -68,19 +69,21 @@ public class ExampleTeleopAim extends OpMode {
     public void init() {
         launchState = LaunchState.IDLE;
 
+        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
+        launcherServo = hardwareMap.get(Servo.class, "launcherServo");
+
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
-        launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         launcher.setZeroPowerBehavior(BRAKE);
 
         launcherServo.setPosition(launcherServoDown);
 
         // Limelight Initialization
-        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
-        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0); // AprilTag pipeline
         limelight.start();
@@ -117,7 +120,7 @@ public class ExampleTeleopAim extends OpMode {
 
         // Driving
         if (!automatedDrive) {
-            // Check for auto-aim
+            // Check for auto-aim9
             if (gamepad1.left_trigger > 0.5) {
                 LLResult result = limelight.getLatestResult();
                 if (result != null && result.isValid()) {
@@ -189,18 +192,21 @@ public class ExampleTeleopAim extends OpMode {
         }
 
         // Launching
-        if (gamepad1.y) {
+        if (gamepad2.y) {
             launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        } else if (gamepad1.b) { // stop flywheel
+        } else if (gamepad2.b) { // stop flywheel
             launcher.setVelocity(STOP_SPEED);
         }
 
-        launch(gamepad1.rightBumperWasPressed());
+        launch(gamepad2.rightBumperWasPressed());
 
-        telemetryM.debug("Current Alliance", colorAlliance);
-        telemetryM.debug("Position", follower.getPose());
-        telemetryM.debug("Velocity", follower.getVelocity());
-        telemetryM.debug("Automated Drive", automatedDrive);
+        telemetry.addData("Current Alliance", colorAlliance);
+        telemetry.addData("Position", follower.getPose());
+        telemetry.addData("Automated Drive", automatedDrive);
+        telemetry.addData("gamepad2 right", gamepad2.rightBumperWasPressed());
+        telemetry.addData("launch state", launchState);
+        telemetry.addData("launcher velocity", launcher.getVelocity());
+
     }
 
     void launch(boolean shotRequested) {
@@ -223,7 +229,7 @@ public class ExampleTeleopAim extends OpMode {
                 break;
 
             case LAUNCHING:
-                if (launcherServo.getPosition() > launcherServoUp - 0.02 || feederTimer.seconds() > MAX_FEED_TIME) {
+                if (feederTimer.seconds() > MAX_FEED_TIME) {
                     launchState = LaunchState.IDLE;
                     launcherServo.setPosition(launcherServoDown);
                 }
