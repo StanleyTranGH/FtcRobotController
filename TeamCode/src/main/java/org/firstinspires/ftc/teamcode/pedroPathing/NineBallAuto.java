@@ -15,19 +15,16 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import java.util.List;
-
-@Autonomous(name = "Example Auto", group = "Examples")
-public class ExampleAuto extends OpMode {
-
+@Autonomous(name = "Nine Ball Auto", group = "Official")
+public class NineBallAuto extends OpMode{
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
 
     private Limelight3A limelight;
-    DcMotorEx intakeMotor;
+    DcMotor intakeMotor;
     String motif = "Not Detected Yet";
     int detectedID;
     int obeliskID = 0; // Having separate detectedID and obeliskID prevents goal targeting April Tags from being mistaken as obelisk
@@ -37,44 +34,45 @@ public class ExampleAuto extends OpMode {
     23: PPG
     */
     public static int colorAlliance = 0; // 1: Red 2: Blue (no use yet, need to add mirror)
+    private int startingPlace = 0; // 1: Far 2: Close
     private int pathState;
     private final Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
     private final Pose scorePose = new Pose(86, 84, Math.toRadians(45)); // Scoring Pose of our robot.
-    private final Pose pickup1Pose = new Pose(100, 81, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
-    private final Pose collect1Pose = new Pose(120, 81, Math.toRadians(0)); // Collect first set of artifacts
+    private final Pose pickup1Pose = new Pose(100, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
+    private final Pose collect1Pose = new Pose(120, 84, Math.toRadians(0)); // Collect first set of artifacts
 
-    private final Pose pickup2Pose = new Pose(100, 57, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
-    private final Pose collect2Pose = new Pose(120, 57, Math.toRadians(0)); // Collect second set of artifacts
+    private final Pose pickup2Pose = new Pose(100, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
+    private final Pose collect2Pose = new Pose(120, 60, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 32, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(120, 32, Math.toRadians(0)); // Collect third set of artifacts
     private final Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
     PathChain scanObelisk, scorePreload, grabPickup1, collectPickup1, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, park;
-     void buildPaths() {
+    void buildPaths() {
 
     /* Here is an example for Constant Interpolation
     scorePreload.setConstantInterpolation(startPose.getHeading()); */
 
-         scanObelisk = follower.pathBuilder()
-                 .addPath(new BezierLine(startPose, scanPose))
-                 .setLinearHeadingInterpolation(startPose.getHeading(), scanPose.getHeading())
-                 .build();
+        scanObelisk = follower.pathBuilder()
+                .addPath(new BezierLine(startPose, scanPose))
+                .setLinearHeadingInterpolation(startPose.getHeading(), scanPose.getHeading())
+                .build();
 
-         scorePreload = follower.pathBuilder()
-                 .addPath(new BezierLine(scanPose, scorePose))
-                 .setLinearHeadingInterpolation(scanPose.getHeading(), scorePose.getHeading())
-                 .build();
+        scorePreload = follower.pathBuilder()
+                .addPath(new BezierLine(scanPose, scorePose))
+                .setLinearHeadingInterpolation(scanPose.getHeading(), scorePose.getHeading())
+                .build();
 
         /* This is our grabPickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
         grabPickup1 = follower.pathBuilder()
                 .addPath(new BezierLine(scorePose, pickup1Pose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), pickup1Pose.getHeading())
                 .build();
-         collectPickup1 = follower.pathBuilder()
-                 .addPath(new BezierLine(pickup1Pose, collect1Pose))
-                 .setTangentHeadingInterpolation()
-                 .build();
+        collectPickup1 = follower.pathBuilder()
+                .addPath(new BezierLine(pickup1Pose, collect1Pose))
+                .setTangentHeadingInterpolation()
+                .build();
 
         /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
         scorePickup1 = follower.pathBuilder()
@@ -87,10 +85,10 @@ public class ExampleAuto extends OpMode {
                 .addPath(new BezierLine(scorePose, pickup2Pose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), pickup2Pose.getHeading())
                 .build();
-         collectPickup2 = follower.pathBuilder()
-                 .addPath(new BezierLine(pickup2Pose, collect2Pose))
-                 .setTangentHeadingInterpolation()
-                 .build();
+        collectPickup2 = follower.pathBuilder()
+                .addPath(new BezierLine(pickup2Pose, collect2Pose))
+                .setTangentHeadingInterpolation()
+                .build();
 
         /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
         scorePickup2 = follower.pathBuilder()
@@ -103,10 +101,10 @@ public class ExampleAuto extends OpMode {
                 .addPath(new BezierLine(scorePose, pickup3Pose))
                 .setLinearHeadingInterpolation(scorePose.getHeading(), pickup3Pose.getHeading())
                 .build();
-         collectPickup3 = follower.pathBuilder()
-                 .addPath(new BezierLine(pickup3Pose, collect3Pose))
-                 .setTangentHeadingInterpolation()
-                 .build();
+        collectPickup3 = follower.pathBuilder()
+                .addPath(new BezierLine(pickup3Pose, collect3Pose))
+                .setTangentHeadingInterpolation()
+                .build();
 
         /* This is our scorePickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
         scorePickup3 = follower.pathBuilder()
@@ -213,7 +211,7 @@ public class ExampleAuto extends OpMode {
             case 4:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (pathTimer.getElapsedTimeSeconds() > 1) {
-
+                    intakeMotor.setPower(0);
                 }
                 if(!follower.isBusy()) {
                     /* TODO: SHOOT BALLS */
@@ -252,7 +250,7 @@ public class ExampleAuto extends OpMode {
             case 7:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (pathTimer.getElapsedTimeSeconds() > 1) {
-
+                    intakeMotor.setPower(0);
                 }
                 if(!follower.isBusy()) {
                     /* TODO: SHOOT BALLS */
@@ -294,7 +292,7 @@ public class ExampleAuto extends OpMode {
             case 10:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (pathTimer.getElapsedTimeSeconds() > 1) {
-
+                    intakeMotor.setPower(0);
                 }
                 if(!follower.isBusy()) {
                     /* TODO: SHOOT BALLS */
@@ -339,10 +337,10 @@ public class ExampleAuto extends OpMode {
         /* Limelight Stuff */
         // Initialize Hardware
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
-        intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
+        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        // Ensure we're using pipeline 0 (your AprilTag pipeline)
+        // Ensure we're using pipeline 0
         limelight.pipelineSwitch(0);
 
         // Start the Limelight
@@ -357,9 +355,9 @@ public class ExampleAuto extends OpMode {
         telemetry.addData("Status", "Initialized");
         telemetry.addLine("Press A for Red and B for Blue");
 
-        if(gamepad1.a) {
+        if(gamepad1.aWasPressed()) {
             colorAlliance = 1; // Red
-        } else if(gamepad1.b) {
+        } else if(gamepad1.bWasPressed()) {
             colorAlliance = 2; // Blue
         }
 
@@ -371,6 +369,21 @@ public class ExampleAuto extends OpMode {
             telemetry.addData("Selected Color", "No Color Selected");
         }
 
+        telemetry.addLine("Press X for Far and Y for Close");
+        if(gamepad1.xWasPressed()) {
+            startingPlace = 1; // Far
+        } else if(gamepad1.yWasPressed()) {
+            startingPlace = 2; // Close
+        }
+
+        if (startingPlace == 1) {
+            telemetry.addData("Starting Position", "Far");
+        } else if (startingPlace == 2) {
+            telemetry.addData("Starting Position", "Close");
+        } else if (startingPlace == 0) {
+            telemetry.addData("Starting Position", "No Position Selected");
+        }
+
         telemetry.update();
     }
 
@@ -379,6 +392,14 @@ public class ExampleAuto extends OpMode {
     @Override
     public void start() {
         opmodeTimer.resetTimer();
+
+        if(colorAlliance == 0) {
+            colorAlliance = 2;
+        }
+        if(startingPlace == 0) {
+            startingPlace = 2;
+        }
+
         setPathState(0);
     }
 

@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
+import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 import static org.firstinspires.ftc.teamcode.pedroPathing.ExampleAuto.colorAlliance;
 
 import com.bylazar.configurables.annotations.Configurable;
@@ -20,9 +21,12 @@ import java.util.function.Supplier;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import com.arcrobotics.ftclib.controller.PIDFController;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 @Configurable
 @TeleOp(name = "Example Teleop Aim", group = "Examples")
@@ -42,21 +46,50 @@ public class ExampleTeleopAim extends OpMode {
 
     // Mechanisms
     DcMotor intakeMotor;
+    DcMotorEx launcher;
+    Servo launcherServo;
+    ElapsedTime feederTimer = new ElapsedTime();
+
+    final double launcherServoDown = 0.16;
+    final double launcherServoUp = 0.45; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double LAUNCHER_TARGET_VELOCITY = 1400; // DONE: FIND DESIRED LAUNDER VELOCITY
+    final double LAUNCHER_MIN_VELOCITY = 1350;
+    final double STOP_SPEED = 0.0;
+
+    final double MAX_FEED_TIME = 0.3;
+    private enum LaunchState {
+        IDLE,
+        SPIN_UP,
+        LAUNCH,
+        LAUNCHING,
+    }
+    private LaunchState launchState;
 
     @Override
     public void init() {
+        launchState = LaunchState.IDLE;
+
+        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
+        launcherServo = hardwareMap.get(Servo.class, "launcherServo");
+
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
-        // Limelight init
-        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        launcher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        launcher.setZeroPowerBehavior(BRAKE);
+
+        launcherServo.setPosition(launcherServoDown);
+
+        // Limelight Initialization
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0); // AprilTag pipeline
         limelight.start();
 
-        if(colorAlliance == 2) {
+        if(colorAlliance == 1) {
+            // TODO: CHANGE BACK TO colorAlliance == 2 FOR COMPETITION
             // Set lazy curve to blue alliance base if on team blue
             pathChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, new Pose(104, 33))))
@@ -69,6 +102,8 @@ public class ExampleTeleopAim extends OpMode {
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
                     .build();
         }
+
+        telemetry.addData("Status", "Initialized");
     }
 
     @Override
@@ -83,8 +118,9 @@ public class ExampleTeleopAim extends OpMode {
 
         double turn;
 
+        // Driving
         if (!automatedDrive) {
-            // Check for auto-aim
+            // Check for auto-aim9
             if (gamepad1.left_trigger > 0.5) {
                 LLResult result = limelight.getLatestResult();
                 if (result != null && result.isValid()) {
@@ -132,6 +168,7 @@ public class ExampleTeleopAim extends OpMode {
         if (gamepad1.aWasPressed()) {
             follower.followPath(pathChain.get());
             automatedDrive = true;
+            //this might be what we need to use if we want to automate parking, i didn't want to change it yet; used a different button
         }
 
         if (automatedDrive && (gamepad1.bWasPressed() || !follower.isBusy())) {
@@ -139,12 +176,22 @@ public class ExampleTeleopAim extends OpMode {
             automatedDrive = false;
         }
 
+        //Path straight to park
+        if (gamepad1.yWasPressed()) {
+            follower.followPath(follower.pathBuilder()
+                    .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
+                    .build());
+                    //we might have to mess around with decelleration? right now not necessary i think
+            automatedDrive = true;
+        }
+
         //Slow Mode toggle
         if (gamepad1.rightBumperWasPressed()) {
             slowMode = !slowMode;
         }
 
-        //Optional adjust slowMode strength
+        // Intaking
         if (gamepad1.xWasPressed()) {
             intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
             intakeMotor.setPower(1);
@@ -155,10 +202,50 @@ public class ExampleTeleopAim extends OpMode {
             intakeMotor.setPower(0);
         }
 
-        telemetryM.debug("Current Alliance", colorAlliance);
-        telemetryM.debug("Position", follower.getPose());
-        telemetryM.debug("Velocity", follower.getVelocity());
-        telemetryM.debug("Automated Drive", automatedDrive);
+        // Launching
+        if (gamepad2.y) {
+            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        } else if (gamepad2.b) { // stop flywheel
+            launcher.setVelocity(STOP_SPEED);
+        }
+
+        launch(gamepad2.rightBumperWasPressed());
+
+        telemetry.addData("Current Alliance", colorAlliance);
+        telemetry.addData("Position", follower.getPose());
+        telemetry.addData("Automated Drive", automatedDrive);
+        telemetry.addData("gamepad2 right", gamepad2.rightBumperWasPressed());
+        telemetry.addData("launch state", launchState);
+        telemetry.addData("launcher velocity", launcher.getVelocity());
+
+    }
+
+    void launch(boolean shotRequested) {
+        switch (launchState) {
+            case IDLE:
+                if (shotRequested) {
+                    launchState = LaunchState.SPIN_UP;
+                }
+                break;
+            case SPIN_UP:
+                launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
+                    launchState = LaunchState.LAUNCH;
+                }
+                break;
+            case LAUNCH:
+                launcherServo.setPosition(launcherServoUp);
+                launchState = LaunchState.LAUNCHING;
+                feederTimer.reset();
+                break;
+
+            case LAUNCHING:
+                if (feederTimer.seconds() > MAX_FEED_TIME) {
+                    launchState = LaunchState.IDLE;
+                    launcherServo.setPosition(launcherServoDown);
+                }
+                break;
+        }
     }
 }
 
