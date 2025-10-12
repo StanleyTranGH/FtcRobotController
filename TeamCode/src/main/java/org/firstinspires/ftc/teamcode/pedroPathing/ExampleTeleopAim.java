@@ -182,11 +182,22 @@ public class ExampleTeleopAim extends OpMode {
         if (gamepad1.aWasPressed()) {
             follower.followPath(parkChain.get());
             automatedDrive = true;
+            //this might be what we need to use if we want to automate parking, i didn't want to change it yet; used a different button
         }
 
         if (automatedDrive && (gamepad1.bWasPressed() || !follower.isBusy())) {
             follower.startTeleopDrive();
             automatedDrive = false;
+        }
+
+        //Path straight to park
+        if (gamepad1.yWasPressed()) {
+            follower.followPath(follower.pathBuilder()
+                    .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
+                    .build());
+                    //we might have to mess around with decelleration? right now not necessary i think
+            automatedDrive = true;
         }
 
         //Slow Mode toggle
