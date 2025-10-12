@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.pedroPathing; // make sure this aligns with class location
 
+import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
+
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
@@ -17,10 +19,11 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import java.util.List;
 
-@Autonomous(name = "Example Auto", group = "Examples")
+@Autonomous(name = "12 Ball Auto", group = "Examples")
 public class ExampleAuto extends OpMode {
 
     private Follower follower;
@@ -28,6 +31,8 @@ public class ExampleAuto extends OpMode {
 
     private Limelight3A limelight;
     DcMotorEx intakeMotor;
+    DcMotorEx launcher;
+    Servo launcherServo;
     String motif = "Not Detected Yet";
     int detectedID;
     int obeliskID = 0; // Having separate detectedID and obeliskID prevents goal targeting April Tags from being mistaken as obelisk
@@ -37,6 +42,20 @@ public class ExampleAuto extends OpMode {
     23: PPG
     */
     public static int colorAlliance = 0; // 1: Red 2: Blue (no use yet, need to add mirror)
+    final double launcherServoDown = 0.10;
+    final double launcherServoUp = 0.45; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double LAUNCHER_TARGET_VELOCITY = 1500; // DONE: FIND DESIRED LAUNDER VELOCITY
+    final double LAUNCHER_MIN_VELOCITY = 1440;
+    final double LAUNCHER_MAX_VELOCITY = 1560;
+    final double STOP_SPEED = 0.0;
+    final double MAX_FEED_TIME = 0.3;
+    private enum LaunchState {
+        IDLE,
+        SPIN_UP,
+        LAUNCH,
+        LAUNCHING,
+    }
+
     private int pathState;
     private final Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
@@ -157,6 +176,7 @@ public class ExampleAuto extends OpMode {
 
                 // DONE: ADJUST ELAPSED TIME SECONDS OR CHANGE IF NEEDED
                 if(obeliskID != 0) {
+                    launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
                     follower.followPath(scorePreload);
                     setPathState(1);
                 }
@@ -336,11 +356,20 @@ public class ExampleAuto extends OpMode {
         buildPaths();
         follower.setStartingPose(startPose);
 
+        LaunchState launchState = LaunchState.IDLE;
+
         /* Limelight Stuff */
         // Initialize Hardware
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
+        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
+        launcherServo = hardwareMap.get(Servo.class, "launcherServo");
         intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
+
+        launcher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        launcher.setZeroPowerBehavior(BRAKE);
+
+        launcherServo.setPosition(launcherServoDown);
 
         // Ensure we're using pipeline 0 (your AprilTag pipeline)
         limelight.pipelineSwitch(0);

@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode.pedroPathing;
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 import static org.firstinspires.ftc.teamcode.pedroPathing.ExampleAuto.colorAlliance;
 
+import com.arcrobotics.ftclib.hardware.motors.Motor;
+import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
@@ -28,14 +30,20 @@ import com.arcrobotics.ftclib.controller.PIDFController;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import dev.nextftc.control.ControlSystem;
+import dev.nextftc.control.KineticState;
+import dev.nextftc.control.feedback.PIDCoefficients;
+
 @Configurable
-@TeleOp(name = "Example Teleop Aim", group = "Examples")
-public class ExampleTeleopAim extends OpMode {
+@TeleOp(name = "Main Teleop", group = "Official")
+public class MainTeleop extends OpMode {
     private Follower follower;
-    public static Pose startingPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+    //TODO: CHANGE THIS STARTING POSE AFTER AUTO IS DONE
+    public static Pose startingPose = new Pose(88, 8, Math.toRadians(90));
+    // public static Pose startingPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+    private boolean automatedDrive;
     public static Pose parkPose;
     public static Pose scorePose;
-    private boolean automatedDrive;
     private Supplier<PathChain> parkChain, shootChain;
     private TelemetryManager telemetryM;
     private boolean slowMode = false;
@@ -44,7 +52,8 @@ public class ExampleTeleopAim extends OpMode {
     // Limelight fields
     private Limelight3A limelight;
     private int aimTagID;
-    private PIDFController aimController = new PIDFController(0.03, 0.0, 0.002, 0.0); // kP, kI, kD, kF
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.001);
+    ControlSystem launcherController;
 
     // Mechanisms
     DcMotor intakeMotor;
@@ -54,9 +63,13 @@ public class ExampleTeleopAim extends OpMode {
 
     final double launcherServoDown = 0.10;
     final double launcherServoUp = 0.45; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double LAUNCHER_TARGET_VELOCITY = 1400; // DONE: FIND DESIRED LAUNDER VELOCITY
-    final double LAUNCHER_MIN_VELOCITY = 1350;
+    final double LAUNCHER_TARGET_VELOCITY = 1500; // DONE: FIND DESIRED LAUNDER VELOCITY
+    final double LAUNCHER_MIN_VELOCITY = 1440;
+    final double LAUNCHER_MAX_VELOCITY = 1560;
     final double STOP_SPEED = 0.0;
+    KineticState stopLauncherKineticState = new KineticState(0, 0);
+    KineticState targetLauncherKineticState = new KineticState(0, LAUNCHER_TARGET_VELOCITY);
+    KineticState currentLauncherKineticState = new KineticState(0, 0);;
 
     final double MAX_FEED_TIME = 0.3;
     private enum LaunchState {
@@ -80,10 +93,16 @@ public class ExampleTeleopAim extends OpMode {
         follower.update();
         telemetryM = PanelsTelemetry.INSTANCE.getTelemetry();
 
-        launcher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         launcher.setZeroPowerBehavior(BRAKE);
 
+        launcherController = ControlSystem.builder()
+                .velPid(launcherPIDCoefficients)
+                .build();
+
+        launcher.setPower(0.0);
+
         launcherServo.setPosition(launcherServoDown);
+        launcherController.setGoal(stopLauncherKineticState);
 
         // Limelight Initialization
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -92,8 +111,8 @@ public class ExampleTeleopAim extends OpMode {
 
         // TODO: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
         // TODO: FIND REAL PARK & SCORE POSE
-        parkPose = new Pose(104, 33, Math.toRadians(90));
-        scorePose = new Pose(86, 84, Math.toRadians(45));
+        parkPose = new Pose(108, 33, Math.toRadians(90));
+        scorePose = new Pose(90, 118, Math.toRadians(50));
 
         if(colorAlliance == 1) {
             // Set lazy curve to red alliance base if on team red
@@ -103,7 +122,7 @@ public class ExampleTeleopAim extends OpMode {
                     .build();
             shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, scorePose)))
-                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(45), 0.8))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, scorePose.getHeading(), 0.8))
                     .build();
         } else {
             // Set lazy curve to blue alliance by default
@@ -113,7 +132,7 @@ public class ExampleTeleopAim extends OpMode {
                     .build();
             shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, scorePose.mirror())))
-                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(135), 0.8))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, (180 - scorePose.getHeading()), 0.8))
                     .build();
         }
 
@@ -127,70 +146,49 @@ public class ExampleTeleopAim extends OpMode {
 
     @Override
     public void loop() {
+        //Call this once per loop
         follower.update();
         telemetryM.update();
 
-        double turn;
-
-        // Driving
         if (!automatedDrive) {
-            // Check for auto-aim
-            if (gamepad1.left_trigger > 0.5) {
-                LLResult result = limelight.getLatestResult();
-                if (result != null && result.isValid()) {
-                    List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
-                    for (LLResultTypes.FiducialResult fiducial : fiducials) {
-                        aimTagID = fiducial.getFiducialId();
-                    }
-                    if(aimTagID == 24 && colorAlliance == 1 || aimTagID == 20 && colorAlliance == 2 ) {
-                        // Making sure we're tracking the appropriate alliance april tag
-                        double tx = result.getTx(); // horizontal offset
-
-                        // Deadband to prevent jitter
-                        if (Math.abs(tx) < 1.0) {
-                            tx = 0;
-                            aimController.reset();
-                        }
-
-                        turn = aimController.calculate(tx, 0); // target setpoint = 0 (centered tag)
-                    } else {
-                        turn = -gamepad1.right_stick_x;
-                    }
-                } else {
-                    turn = -gamepad1.right_stick_x;
-                }
-            } else {
-                turn = -gamepad1.right_stick_x;
-            }
-
-            // Normal or slow mode XY control
+            //Make the last parameter false for field-centric
+            //In case the drivers want to use a "slowMode" you can scale the vectors
+            //This is the normal version to use in the TeleOp
             if (!slowMode) follower.setTeleOpDrive(
                     -gamepad1.left_stick_y,
                     -gamepad1.left_stick_x,
-                    turn,
+                    -gamepad1.right_stick_x,
                     false // Field Centric
             );
+                //This is how it looks with slowMode on
             else follower.setTeleOpDrive(
                     -gamepad1.left_stick_y * slowModeMultiplier,
                     -gamepad1.left_stick_x * slowModeMultiplier,
-                    turn,
+                    -gamepad1.right_stick_x * slowModeMultiplier,
                     false // Field Centric
             );
         }
 
-        //Automated PathFollowing
         if (gamepad1.aWasPressed()) {
-            follower.followPath(parkChain.get());
-            automatedDrive = true;
+            automatedDrive = !automatedDrive;
+            if (automatedDrive) {
+                follower.followPath(parkChain.get());
+            } else {
+                follower.startTeleopDrive(true);
+            }
         }
 
-        if (automatedDrive && (gamepad1.bWasPressed() || !follower.isBusy())) {
-            follower.startTeleopDrive();
-            automatedDrive = false;
+        if(gamepad1.rightBumperWasPressed()) {
+            automatedDrive = !automatedDrive;
+            if(automatedDrive) {
+                follower.followPath(shootChain.get());
+            } else {
+                follower.startTeleopDrive(true);
+            }
         }
 
         //Slow Mode toggle
-        if (gamepad1.rightBumperWasPressed()) {
+        if (gamepad1.leftBumperWasPressed()) {
             slowMode = !slowMode;
         }
 
@@ -206,13 +204,16 @@ public class ExampleTeleopAim extends OpMode {
         }
 
         // Launching
-        if (gamepad2.y) {
-            launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        } else if (gamepad2.b) { // stop flywheel
-            launcher.setVelocity(STOP_SPEED);
+        if (gamepad2.yWasPressed()) {
+            launcherController.setGoal(targetLauncherKineticState);
+        } else if (gamepad2.bWasPressed()) { // stop flywheel
+            launcherController.setGoal(stopLauncherKineticState);
         }
 
         launch(gamepad2.rightBumperWasPressed());
+
+        currentLauncherKineticState = new KineticState(launcher.getCurrentPosition(), launcher.getVelocity());
+        launcher.setPower(launcherController.calculate(currentLauncherKineticState));
 
         telemetry.addData("Current Alliance", colorAlliance);
         telemetry.addData("Position", follower.getPose());
@@ -231,8 +232,8 @@ public class ExampleTeleopAim extends OpMode {
                 }
                 break;
             case SPIN_UP:
-                launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-                if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
+                launcherController.setGoal(targetLauncherKineticState);
+                if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < LAUNCHER_MAX_VELOCITY) {
                     launchState = LaunchState.LAUNCH;
                 }
                 break;
@@ -251,5 +252,3 @@ public class ExampleTeleopAim extends OpMode {
         }
     }
 }
-
-
