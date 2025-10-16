@@ -23,6 +23,11 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import java.util.List;
+
+import dev.nextftc.control.ControlSystem;
+import dev.nextftc.control.KineticState;
+import dev.nextftc.control.feedback.PIDCoefficients;
+
 @Autonomous(name = "Nine Ball Auto", group = "Official")
 public class NineBallAuto extends OpMode{
     private Follower follower;
@@ -33,14 +38,21 @@ public class NineBallAuto extends OpMode{
     DcMotorEx launcher;
     Servo launcherServo;
     final double launcherServoDown = 0.10;
-    final double launcherServoUp = 0.45; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double LAUNCHER_TARGET_VELOCITY = 1500; // DONE: FIND DESIRED LAUNDER VELOCITY
-    final double LAUNCHER_MIN_VELOCITY = 1440;
+    final double launcherServoUp = 0.47; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNDER VELOCITY
+    final double LAUNCHER_MIN_VELOCITY = 1460;
     final double LAUNCHER_MAX_VELOCITY = 1560;
     final double STOP_SPEED = 0.0;
-    final double MAX_FEED_TIME = 0.3;
-    final double MAX_WAITING_TIME = 0.85;
+    final double MAX_FEED_TIME = 0.35;
+    final double MAX_WAITING_TIME = 0.75;
+    final double INTAKING = 1.0;
+    final double OUTAKING = -1.0;
     int shotCounter = 0;
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.001);
+    ControlSystem launcherController;
+    KineticState stopLauncherKineticState = new KineticState(0, 0);
+    KineticState targetLauncherKineticState = new KineticState(0, LAUNCHER_TARGET_VELOCITY);
+    KineticState currentLauncherKineticState = new KineticState(0, 0);;
     private enum LaunchState {
         IDLE,
         SPIN_UP,
@@ -58,12 +70,13 @@ public class NineBallAuto extends OpMode{
     22: PGP
     23: PPG
     */
-    public static int colorAlliance = 0; // 1: Red 2: Blue (no use yet, need to add mirror)
-    private int startingPlace = 0; // 1: Far 2: Close
+    public static int colorAlliance = 1; // 1: Red 2: Blue
+    public static int startingPlace = 1; // 1: Far 2: Close
     private int pathState;
-    private final Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
-    private final Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
-    private final Pose scorePose = new Pose(90, 118, Math.toRadians(50)); // Scoring Pose of our robot.
+    // TODO: CHANGE THIS START TO CLOSE START
+    private Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
+    private Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
+    private Pose scorePose = new Pose(91, 91, Math.toRadians(45)); // Scoring Pose of our robot.
     private final Pose pickup1Pose = new Pose(100, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
 
@@ -71,7 +84,7 @@ public class NineBallAuto extends OpMode{
     private final Pose collect2Pose = new Pose(124, 60, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 35, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(124, 35, Math.toRadians(0)); // Collect third set of artifacts
-    private final Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
+    private Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
     PathChain scanObelisk, scorePreload, grabPickup1, collectPickup1, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, park;
     void buildPaths() {
@@ -79,76 +92,167 @@ public class NineBallAuto extends OpMode{
     /* Here is an example for Constant Interpolation
     scorePreload.setConstantInterpolation(startPose.getHeading()); */
 
-        scanObelisk = follower.pathBuilder()
-                .addPath(new BezierLine(startPose, scanPose))
-                .setLinearHeadingInterpolation(startPose.getHeading(), scanPose.getHeading())
-                .build();
+        if(startingPlace == 1) { // Far
+            //TODO: CHANGE THIS START POSE TO FAR START
+            startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
+            // TODO: CHANGE THIS POSE TO FAR SCAN
+            scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
+            // TODO: CHANGE THIS POSE TO FAR SCORE
+            scorePose = new Pose(91, 91, Math.toRadians(45)); // Scoring Pose of our robot.
+            parkPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.
+        } else if (startingPlace == 2) { // Close
+            startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
+            // TODO: CHANGE THIS POSE TO CLOSE SCAN
+            scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
+            scorePose = new Pose(91, 91, Math.toRadians(45)); // Scoring Pose of our robot.
+            // DONE: CHANGE THIS POSE TO CLOSE PARK
+            parkPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot.
+        }
 
-        scorePreload = follower.pathBuilder()
-                .addPath(new BezierLine(scanPose, scorePose))
-                .setLinearHeadingInterpolation(scanPose.getHeading(), scorePose.getHeading())
-                .build();
+        if(colorAlliance == 1) {
+            scanObelisk = follower.pathBuilder()
+                    .addPath(new BezierLine(startPose, scanPose))
+                    .setLinearHeadingInterpolation(startPose.getHeading(), scanPose.getHeading())
+                    .build();
 
-        /* This is our grabPickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-        grabPickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, pickup1Pose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup1Pose.getHeading())
-                .build();
-        collectPickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(pickup1Pose, collect1Pose))
-                .setTangentHeadingInterpolation()
-                .build();
+            scorePreload = follower.pathBuilder()
+                    .addPath(new BezierLine(scanPose, scorePose))
+                    .setLinearHeadingInterpolation(scanPose.getHeading(), scorePose.getHeading())
+                    .build();
 
-        /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-        scorePickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(collect1Pose, scorePose))
-                .setLinearHeadingInterpolation(collect1Pose.getHeading(), scorePose.getHeading())
-                .build();
+            /* This is our grabPickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            grabPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, pickup1Pose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), pickup1Pose.getHeading())
+                    .build();
+            collectPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup1Pose, collect1Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
 
-        /* This is our grabPickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-        grabPickup2 = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, pickup2Pose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup2Pose.getHeading())
-                .build();
-        collectPickup2 = follower.pathBuilder()
-                .addPath(new BezierLine(pickup2Pose, collect2Pose))
-                .setTangentHeadingInterpolation()
-                .build();
+            /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect1Pose, scorePose))
+                    .setLinearHeadingInterpolation(collect1Pose.getHeading(), scorePose.getHeading())
+                    .build();
 
-        /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-        scorePickup2 = follower.pathBuilder()
-                .addPath(new BezierLine(collect2Pose, scorePose))
-                .setLinearHeadingInterpolation(collect2Pose.getHeading(), scorePose.getHeading())
-                .build();
+            /* This is our grabPickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            grabPickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, pickup2Pose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), pickup2Pose.getHeading())
+                    .build();
+            collectPickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup2Pose, collect2Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
 
-        /* This is our grabPickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-        grabPickup3 = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, pickup3Pose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup3Pose.getHeading())
-                .build();
-        collectPickup3 = follower.pathBuilder()
-                .addPath(new BezierLine(pickup3Pose, collect3Pose))
-                .setTangentHeadingInterpolation()
-                .build();
+            /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect2Pose, scorePose))
+                    .setLinearHeadingInterpolation(collect2Pose.getHeading(), scorePose.getHeading())
+                    .build();
 
-        /* This is our scorePickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-        scorePickup3 = follower.pathBuilder()
-                .addPath(new BezierLine(collect3Pose, scorePose))
-                .setLinearHeadingInterpolation(collect3Pose.getHeading(), scorePose.getHeading())
-                .build();
+            /* This is our grabPickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            grabPickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, pickup3Pose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), pickup3Pose.getHeading())
+                    .build();
+            collectPickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup3Pose, collect3Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
 
-        park = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, parkPose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), parkPose.getHeading())
-                .build();
+            /* This is our scorePickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect3Pose, scorePose))
+                    .setLinearHeadingInterpolation(collect3Pose.getHeading(), scorePose.getHeading())
+                    .build();
+
+            park = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, parkPose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), parkPose.getHeading())
+                    .build();
+        } else if(colorAlliance == 2) { // Mirrored poses for blue side
+            scanObelisk = follower.pathBuilder()
+                    .addPath(new BezierLine(startPose.mirror(), scanPose.mirror()))
+                    .setLinearHeadingInterpolation(startPose.mirror().getHeading(), scanPose.mirror().getHeading())
+                    .build();
+
+            scorePreload = follower.pathBuilder()
+                    .addPath(new BezierLine(scanPose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(scanPose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .build();
+
+            /* This is our grabPickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            grabPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), pickup1Pose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup1Pose.mirror().getHeading())
+                    .build();
+            collectPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup1Pose.mirror(), collect1Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
+            /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect1Pose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(collect1Pose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .build();
+
+            /* This is our grabPickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            grabPickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), pickup2Pose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup2Pose.mirror().getHeading())
+                    .build();
+            collectPickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup2Pose.mirror(), collect2Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
+            /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect2Pose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(collect2Pose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .build();
+
+            /* This is our grabPickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            grabPickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), pickup3Pose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup3Pose.mirror().getHeading())
+                    .build();
+            collectPickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup3Pose.mirror(), collect3Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
+            /* This is our scorePickup3 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect3Pose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(collect3Pose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .build();
+
+            park = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), parkPose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), parkPose.mirror().getHeading())
+                    .build();
+        }
 
     }
     public void autonomousPathUpdate() {
         switch (pathState) {
             case 0:
+
                 follower.followPath(scanObelisk);
-                setPathState(12);
+                launcherController.setGoal(targetLauncherKineticState);
+                setPathState(-1);
                 break;
+                // SKIPPING SCANNING FOR NOW
+            case -1:
+                if(!follower.isBusy()) {
+                    follower.followPath(scorePreload);
+                    shotCounter = 0;
+                    setPathState(1);
+                }
             case 12:
 
                 /* DONE: SCAN MOTIF */
@@ -181,9 +285,9 @@ public class NineBallAuto extends OpMode{
                 // DONE: ADJUST ELAPSED TIME SECONDS OR CHANGE IF NEEDED
                 if(obeliskID != 0) {
                     follower.followPath(scorePreload);
-                    launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                    launcherController.setGoal(targetLauncherKineticState);
                     shotCounter = 0;
-                    intakeMotor.setPower(1);
+                    intakeMotor.setPower(INTAKING);
                     setPathState(1);
                 }
                 break;
@@ -203,7 +307,8 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcher.setVelocity(STOP_SPEED);
+                        launcherController.setGoal(stopLauncherKineticState);
+                        intakeMotor.setPower(INTAKING);
                         follower.followPath(grabPickup1, true);
                         setPathState(2);
                     }
@@ -213,10 +318,11 @@ public class NineBallAuto extends OpMode{
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
                     /* DONE: ACTIVATE INTAKE */
-                    intakeMotor.setPower(1);
+                    intakeMotor.setPower(INTAKING);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
-                    follower.followPath(collectPickup1, 0.3,true);
+                    /* TODO: DECIDE BEST PATH POWER */
+                    follower.followPath(collectPickup1, 0.5,true);
                     setPathState(3);
                 }
                 break;
@@ -228,7 +334,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup1,true);
-                    launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                    launcherController.setGoal(targetLauncherKineticState);
                     shotCounter = 0;
                     setPathState(4);
                 }
@@ -241,9 +347,9 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcher.setVelocity(STOP_SPEED);
+                        launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(grabPickup2, true);
-                        setPathState(2);
+                        setPathState(5);
                     }
 
                 }
@@ -252,10 +358,10 @@ public class NineBallAuto extends OpMode{
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 if(!follower.isBusy()) {
                     /* DONE: ACTIVATE INTAKE */
-                    intakeMotor.setPower(1);
+                    intakeMotor.setPower(INTAKING);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
-                    follower.followPath(collectPickup2, 0.3,true);
+                    follower.followPath(collectPickup2, 0.5,true);
                     setPathState(6);
                 }
                 break;
@@ -266,7 +372,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup2, true);
-                    launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                    launcherController.setGoal(targetLauncherKineticState);
                     shotCounter = 0;
                     setPathState(7);
                 }
@@ -278,8 +384,9 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcher.setVelocity(STOP_SPEED);
+                        launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(park, true);
+                        intakeMotor.setPower(STOP_SPEED);
                         setPathState(11);
                     }
                 }
@@ -317,12 +424,18 @@ public class NineBallAuto extends OpMode{
         // Initialize Hardware
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
-        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
 
-        launcher.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         launcher.setZeroPowerBehavior(BRAKE);
+
+        launcherController = ControlSystem.builder()
+                .velPid(launcherPIDCoefficients)
+                .build();
+
+        launcher.setPower(STOP_SPEED);
+        launcherController.setGoal(stopLauncherKineticState);
 
         launcherServo.setPosition(launcherServoDown);
 
@@ -343,8 +456,10 @@ public class NineBallAuto extends OpMode{
 
         if(gamepad1.aWasPressed()) {
             colorAlliance = 1; // Red
+            buildPaths();
         } else if(gamepad1.bWasPressed()) {
             colorAlliance = 2; // Blue
+            buildPaths();
         }
 
         if (colorAlliance == 1) {
@@ -358,8 +473,10 @@ public class NineBallAuto extends OpMode{
         telemetry.addLine("Press X for Far and Y for Close");
         if(gamepad1.xWasPressed()) {
             startingPlace = 1; // Far
+            buildPaths();
         } else if(gamepad1.yWasPressed()) {
             startingPlace = 2; // Close
+            buildPaths();
         }
 
         if (startingPlace == 1) {
@@ -397,6 +514,10 @@ public class NineBallAuto extends OpMode{
         follower.update();
         autonomousPathUpdate();
 
+        // Calculate PID for launcher velocity based on goal (set earlier) and current velocity
+        currentLauncherKineticState = new KineticState(launcher.getCurrentPosition(), launcher.getVelocity());
+        launcher.setPower(launcherController.calculate(currentLauncherKineticState));
+
         // Feedback to Driver Hub for debugging
         telemetry.addData("Path State", pathState);
         telemetry.addData("x", follower.getPose().getX());
@@ -404,6 +525,7 @@ public class NineBallAuto extends OpMode{
         telemetry.addData("Heading", follower.getPose().getHeading());
         telemetry.addData("Detected ID", detectedID);
         telemetry.addData("Detected Motif", motif);
+        telemetry.addData("Launcher Velocity", launcher.getVelocity());
         telemetry.update();
     }
 
@@ -418,7 +540,7 @@ public class NineBallAuto extends OpMode{
                 }
                 break;
             case SPIN_UP:
-                launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
+                launcherController.setGoal(targetLauncherKineticState);
                 if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < LAUNCHER_MAX_VELOCITY) {
                     launchState = LaunchState.LAUNCH;
                 }
@@ -433,12 +555,17 @@ public class NineBallAuto extends OpMode{
                 if (feederTimer.seconds() > MAX_FEED_TIME) {
                     launchState = LaunchState.WAITING;
                     launcherServo.setPosition(launcherServoDown);
-                    shotCounter = shotCounter + 1;
                     feederTimer.reset();
+
                 }
                 break;
             case WAITING:
-                if (feederTimer.seconds() > MAX_WAITING_TIME) {
+                if (shotCounter == 2 && feederTimer.seconds() > 0.1) {
+                    shotCounter = shotCounter + 1;
+                    feederTimer.reset();
+                    launchState = LaunchState.IDLE;
+                } else if (feederTimer.seconds() > MAX_WAITING_TIME) {
+                    shotCounter = shotCounter + 1;
                     feederTimer.reset();
                     launchState = LaunchState.IDLE;
                 }
