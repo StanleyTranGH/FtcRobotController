@@ -19,6 +19,7 @@ import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -66,12 +67,17 @@ public class MainTeleop extends OpMode {
 
     final double launcherServoDown = 0.10;
     final double launcherServoUp = 0.47; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNDER VELOCITY
-    final double LAUNCHER_MIN_VELOCITY = 1460;
-    final double LAUNCHER_MAX_VELOCITY = 1560;
+    String launcherRange = "CLOSE"; // CLOSE or FAR
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1460;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1560;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 1750;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 1850;
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
-    KineticState targetLauncherKineticState = new KineticState(0, LAUNCHER_TARGET_VELOCITY);
+    KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
+    KineticState farTargetLauncherKineticState = new KineticState(0, FAR_LAUNCHER_TARGET_VELOCITY);
     KineticState currentLauncherKineticState = new KineticState(0, 0);;
 
     final double MAX_FEED_TIME = 0.35;
@@ -179,10 +185,11 @@ public class MainTeleop extends OpMode {
                     );
                 } else {
                     follower.setTeleOpDrive(
-                            gamepad1.left_stick_y,
-                            gamepad1.left_stick_x,
+                            -gamepad1.left_stick_y,
+                            -gamepad1.left_stick_x,
                             -gamepad1.right_stick_x,
-                            false // Field Centric
+                            false, // Field Centric
+                            Math.toRadians(180)
                     );
                 }
             }
@@ -197,10 +204,11 @@ public class MainTeleop extends OpMode {
                     );
                 } else {
                     follower.setTeleOpDrive(
-                            gamepad1.left_stick_y * slowModeMultiplier,
-                            gamepad1.left_stick_x * slowModeMultiplier,
+                            -gamepad1.left_stick_y * slowModeMultiplier,
+                            -gamepad1.left_stick_x * slowModeMultiplier,
                             -gamepad1.right_stick_x * slowModeMultiplier,
-                            false // Field Centric
+                            false, // Field Centric
+                            Math.toRadians(180)
                     );
                 }
             }
@@ -236,13 +244,19 @@ public class MainTeleop extends OpMode {
         } else if (gamepad1.yWasPressed()) {
             intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
             intakeMotor.setPower(1);
+        } else if (gamepad1.yWasReleased()) {
+            intakeMotor.setPower(0);
         } else if (gamepad1.aWasPressed()) {
             intakeMotor.setPower(0);
         }
 
         // Launching
         if (gamepad2.yWasPressed()) {
-            launcherController.setGoal(targetLauncherKineticState);
+            launcherRange = "CLOSE";
+            launcherController.setGoal(closeTargetLauncherKineticState);
+        } else if (gamepad2.xWasPressed()) {
+            launcherRange = "FAR";
+            launcherController.setGoal(farTargetLauncherKineticState);
         } else if (gamepad2.bWasPressed()) { // stop flywheel
             launcherController.setGoal(stopLauncherKineticState);
         }
@@ -252,12 +266,18 @@ public class MainTeleop extends OpMode {
         currentLauncherKineticState = new KineticState(launcher.getCurrentPosition(), launcher.getVelocity());
         launcher.setPower(launcherController.calculate(currentLauncherKineticState));
 
-        telemetry.addData("Current Alliance", colorAlliance);
+        telemetry.addLine("-------- PATHING --------");
         telemetry.addData("Position", follower.getPose());
         telemetry.addData("Automated Drive", automatedDrive);
-        telemetry.addData("gamepad2 right", gamepad2.rightBumperWasPressed());
-        telemetry.addData("launch state", launchState);
-        telemetry.addData("launcher velocity", launcher.getVelocity());
+
+        telemetry.addLine("-------- LAUNCHER --------");
+        telemetry.addData("Launch Range", launcherRange);
+        telemetry.addData("Launch State", launchState);
+        telemetry.addData("Launcher Velocity", launcher.getVelocity());
+
+        telemetry.addLine("-------- VARIABLES --------");
+        telemetry.addData("Current Alliance", colorAlliance);
+        telemetry.addData("Starting Position", startingPlace);
 
     }
 
@@ -269,9 +289,16 @@ public class MainTeleop extends OpMode {
                 }
                 break;
             case SPIN_UP:
-                launcherController.setGoal(targetLauncherKineticState);
-                if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < LAUNCHER_MAX_VELOCITY) {
-                    launchState = LaunchState.LAUNCH;
+                if(Objects.equals(launcherRange, "CLOSE")) {
+                    launcherController.setGoal(closeTargetLauncherKineticState);
+                    if (launcher.getVelocity() > CLOSE_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < CLOSE_LAUNCHER_MAX_VELOCITY) {
+                        launchState = LaunchState.LAUNCH;
+                    }
+                } else if(Objects.equals(launcherRange, "FAR")) {
+                    launcherController.setGoal(farTargetLauncherKineticState);
+                    if (launcher.getVelocity() > FAR_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < FAR_LAUNCHER_MAX_VELOCITY) {
+                        launchState = LaunchState.LAUNCH;
+                    }
                 }
                 break;
             case LAUNCH:

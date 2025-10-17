@@ -9,6 +9,7 @@ import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
@@ -23,7 +24,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import java.util.List;
 
-@Autonomous(name = "12 Ball Auto", group = "Examples")
+@Disabled
+@Autonomous(name = "Example Auto", group = "Examples")
 public class ExampleAuto extends OpMode {
 
     private Follower follower;

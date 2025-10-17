@@ -6,31 +6,23 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
-
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import java.util.List;
-
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 
-@Autonomous(name = "Nine Ball Auto", group = "Official")
-public class NineBallAuto extends OpMode{
+@Autonomous(name = "Twelve Ball Auto", group = "Official")
+public class TwelveBallAuto extends OpMode{
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
 
@@ -38,25 +30,21 @@ public class NineBallAuto extends OpMode{
     DcMotor intakeMotor;
     DcMotorEx launcher;
     Servo launcherServo;
-    final double launcherServoDown = 0.08;
+    final double launcherServoDown = 0.10;
     final double launcherServoUp = 0.47; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1460;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1560;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1750;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1850;
+    final double LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNDER VELOCITY
+    final double LAUNCHER_MIN_VELOCITY = 1460;
+    final double LAUNCHER_MAX_VELOCITY = 1560;
     final double STOP_SPEED = 0.0;
     final double MAX_FEED_TIME = 0.35;
-    final double MAX_WAITING_TIME = 0.8;
+    final double MAX_WAITING_TIME = 0.75;
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     int shotCounter = 0;
     public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.001);
     ControlSystem launcherController;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
-    KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
-    KineticState farTargetLauncherKineticState = new KineticState(0, FAR_LAUNCHER_TARGET_VELOCITY);
+    KineticState targetLauncherKineticState = new KineticState(0, LAUNCHER_TARGET_VELOCITY);
     KineticState currentLauncherKineticState = new KineticState(0, 0);;
     private enum LaunchState {
         IDLE,
@@ -75,9 +63,8 @@ public class NineBallAuto extends OpMode{
     22: PGP
     23: PPG
     */
-    public static int colorAlliance = 0; // 1: Red 2: Blue
-    public static int startingPlace = 0; // 1: Far 2: Close
-    boolean lockedIn = false;
+    public static int colorAlliance = 1; // 1: Red 2: Blue
+    public static int startingPlace = 2; // 1: Far 2: Close
     private int pathState;
     // TODO: CHANGE THIS START TO CLOSE START
     private Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
@@ -87,14 +74,16 @@ public class NineBallAuto extends OpMode{
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
 
     private final Pose pickup2Pose = new Pose(100, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
-    private final Pose collect2Pose = new Pose(127, 60, Math.toRadians(0)); // Collect second set of artifacts
+    private final Pose collect2Pose = new Pose(124, 60, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 35, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
-    private final Pose collect3Pose = new Pose(127, 35, Math.toRadians(0)); // Collect third set of artifacts
+    private final Pose collect3Pose = new Pose(124, 35, Math.toRadians(0)); // Collect third set of artifacts
     private final Pose collect4aPose = new Pose(132, 17, Math.toRadians(340)); // Collect the first of the fourth set of artifacts
     private final Pose collect4bPose = new Pose(132, 12, Math.toRadians(340)); // Collect the second of the fourth set of artifacts
     private final Pose collect4bControlPose = new Pose(128, 16, Math.toRadians(340)); // Control for collecting the 4b artifact
     private final Pose collect4cPose = new Pose(133, 9, Math.toRadians(270)); // Collect the third of the fourth set of artifacts
     private final Pose collect4cControlPose = new Pose(131, 13, Math.toRadians(270)); // Control for collecting the 4c artifact
+    private final Pose frontGatePose = new Pose(133, 9, Math.toRadians(270)); // Position the robot in front of the gate
+    private final Pose openGatePose = new Pose(131, 13, Math.toRadians(270)); // Robot position when opening the gate
     private Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
     PathChain scanObelisk, scorePreload, scorePreloadSkipScan, grabPickup1, collectPickup1, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, collectPickup4, scorePickup4, park;
@@ -108,10 +97,10 @@ public class NineBallAuto extends OpMode{
             // DONE: CHANGE THIS POSE TO FAR SCAN
             scanPose = new Pose(88, 49, Math.toRadians(97)); // Scan Obelisk
             // TODO: CHANGE THIS POSE TO FAR SCORE
-            scorePose = new Pose(87, 18, Math.toRadians(67)); // Scoring Pose of our robot.
+            scorePose = new Pose(91, 91, Math.toRadians(45)); // Scoring Pose of our robot.
             parkPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.
         } else if (startingPlace == 2) { // Close
-            // DONE: CHANGE THIS START POSE TO CLOSE START
+            //DONE: CHANGE THIS START POSE TO CLOSE START
             startPose = new Pose(125, 120, Math.toRadians(37)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE SCAN
             scanPose = new Pose(88, 100, Math.toRadians(103)); // Scan Obelisk
@@ -203,9 +192,8 @@ public class NineBallAuto extends OpMode{
                     .setLinearHeadingInterpolation(scorePose.getHeading(), parkPose.getHeading())
                     .build();
         } else if(colorAlliance == 2) { // Mirrored poses for blue side
-            startPose = startPose.mirror();
             scanObelisk = follower.pathBuilder()
-                    .addPath(new BezierLine(startPose, scanPose.mirror()))
+                    .addPath(new BezierLine(startPose.mirror(), scanPose.mirror()))
                     .setLinearHeadingInterpolation(startPose.mirror().getHeading(), scanPose.mirror().getHeading())
                     .build();
 
@@ -215,7 +203,7 @@ public class NineBallAuto extends OpMode{
                     .build();
 
             scorePreloadSkipScan = follower.pathBuilder()
-                    .addPath(new BezierLine(startPose, scorePose.mirror()))
+                    .addPath(new BezierLine(startPose.mirror(), scorePose.mirror()))
                     .setLinearHeadingInterpolation(startPose.mirror().getHeading(), scorePose.mirror().getHeading())
                     .build();
 
@@ -292,11 +280,7 @@ public class NineBallAuto extends OpMode{
         switch (pathState) {
             case 0:
                 shotCounter = 0;
-                if(startingPlace == 2) {
-                    launcherController.setGoal(closeTargetLauncherKineticState);
-                } else {
-                    launcherController.setGoal(farTargetLauncherKineticState);
-                }
+                launcherController.setGoal(targetLauncherKineticState);
                 follower.followPath(scorePreloadSkipScan);
                 if(startingPlace == 2) {
                     setPathState(1);
@@ -335,7 +319,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     /* TODO: DECIDE BEST PATH POWER */
-                    follower.followPath(collectPickup1, 0.5,true);
+                    follower.followPath(collectPickup1, 0.45,true);
                     setPathState(3);
                 }
                 break;
@@ -347,7 +331,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup1,true);
-                    launcherController.setGoal(closeTargetLauncherKineticState);
+                    launcherController.setGoal(targetLauncherKineticState);
                     shotCounter = 0;
                     setPathState(4);
                 }
@@ -374,7 +358,7 @@ public class NineBallAuto extends OpMode{
                     intakeMotor.setPower(INTAKING);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
-                    follower.followPath(collectPickup2, 0.5,true);
+                    follower.followPath(collectPickup2, 0.45,true);
                     setPathState(6);
                 }
                 break;
@@ -385,7 +369,8 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup2, true);
-                    launcherController.setGoal(closeTargetLauncherKineticState);
+                    launcherController.setGoal(targetLauncherKineticState);
+                    shotCounter = 0;
                     setPathState(7);
                 }
                 break;
@@ -438,7 +423,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     /* TODO: DECIDE BEST PATH POWER */
-                    follower.followPath(collectPickup3, 0.5,true);
+                    follower.followPath(collectPickup3, 0.45,true);
                     setPathState(103);
                 }
                 break;
@@ -450,7 +435,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup3,true);
-                    launcherController.setGoal(farTargetLauncherKineticState);
+                    launcherController.setGoal(targetLauncherKineticState);
                     shotCounter = 0;
                     setPathState(104);
                 }
@@ -465,7 +450,7 @@ public class NineBallAuto extends OpMode{
                     } else {
                         launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
-                        follower.followPath(collectPickup4, 0.5, true);
+                        follower.followPath(collectPickup4, 0.45, true);
                         setPathState(105);
                     }
 
@@ -478,7 +463,7 @@ public class NineBallAuto extends OpMode{
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup4, true);
-                    launcherController.setGoal(farTargetLauncherKineticState);
+                    launcherController.setGoal(targetLauncherKineticState);
                     shotCounter = 0;
                     setPathState(106);
                 }
@@ -566,6 +551,8 @@ public class NineBallAuto extends OpMode{
         launch(false);
 
         follower = Constants.createFollower(hardwareMap);
+        buildPaths();
+        follower.setStartingPose(startPose);
 
         /* Limelight Stuff */
         // Initialize Hardware
@@ -599,63 +586,39 @@ public class NineBallAuto extends OpMode{
     @Override
     public void init_loop() {
         telemetry.addData("Status", "Initialized");
-        if(lockedIn == false) {
-            telemetry.addLine("---------- PRESS RIGHT TRIGGER TO LOCK IN ----------");
-            telemetry.addLine("Press A for Red and B for Blue");
+        telemetry.addLine("Press A for Red and B for Blue");
 
-            if (gamepad1.aWasPressed()) {
-                colorAlliance = 1; // Red
-            } else if (gamepad1.bWasPressed()) {
-                colorAlliance = 2; // Blue
-            }
-
-            if (colorAlliance == 1) {
-                telemetry.addData("Selected Color", "Red");
-            } else if (colorAlliance == 2) {
-                telemetry.addData("Selected Color", "Blue");
-            } else if (colorAlliance == 0) {
-                telemetry.addData("Selected Color", "No Color Selected");
-            }
-
-            telemetry.addLine("Press X for Far and Y for Close");
-            if (gamepad1.xWasPressed()) {
-                startingPlace = 1; // Far
-            } else if (gamepad1.yWasPressed()) {
-                startingPlace = 2; // Close
-            }
-
-            if (startingPlace == 1) {
-                telemetry.addData("Starting Position", "Far");
-            } else if (startingPlace == 2) {
-                telemetry.addData("Starting Position", "Close");
-            } else if (startingPlace == 0) {
-                telemetry.addData("Starting Position", "No Position Selected");
-            }
-
-            if (gamepad1.rightBumperWasPressed()) {
-                buildPaths();
-                follower.setStartingPose(startPose);
-                lockedIn = true;
-            }
+        if(gamepad1.aWasPressed()) {
+            colorAlliance = 1; // Red
+            buildPaths();
+        } else if(gamepad1.bWasPressed()) {
+            colorAlliance = 2; // Blue
+            buildPaths();
         }
-        else {
-            telemetry.addLine("---------- LOCKED IN ----------");
 
-            if (colorAlliance == 1) {
-                telemetry.addData("Selected Color", "Red");
-            } else if (colorAlliance == 2) {
-                telemetry.addData("Selected Color", "Blue");
-            } else if (colorAlliance == 0) {
-                telemetry.addData("Selected Color", "No Color Selected");
-            }
+        if (colorAlliance == 1) {
+            telemetry.addData("Selected Color", "Red");
+        } else if (colorAlliance == 2) {
+            telemetry.addData("Selected Color", "Blue");
+        } else if (colorAlliance == 0) {
+            telemetry.addData("Selected Color", "No Color Selected");
+        }
 
-            if (startingPlace == 1) {
-                telemetry.addData("Starting Position", "Far");
-            } else if (startingPlace == 2) {
-                telemetry.addData("Starting Position", "Close");
-            } else if (startingPlace == 0) {
-                telemetry.addData("Starting Position", "No Position Selected");
-            }
+        telemetry.addLine("Press X for Far and Y for Close");
+        if(gamepad1.xWasPressed()) {
+            startingPlace = 1; // Far
+            buildPaths();
+        } else if(gamepad1.yWasPressed()) {
+            startingPlace = 2; // Close
+            buildPaths();
+        }
+
+        if (startingPlace == 1) {
+            telemetry.addData("Starting Position", "Far");
+        } else if (startingPlace == 2) {
+            telemetry.addData("Starting Position", "Close");
+        } else if (startingPlace == 0) {
+            telemetry.addData("Starting Position", "No Position Selected");
         }
 
         telemetry.update();
@@ -668,7 +631,7 @@ public class NineBallAuto extends OpMode{
         opmodeTimer.resetTimer();
 
         if(colorAlliance == 0) {
-            colorAlliance = 1;
+            colorAlliance = 2;
         }
         if(startingPlace == 0) {
             startingPlace = 2;
@@ -711,16 +674,9 @@ public class NineBallAuto extends OpMode{
                 }
                 break;
             case SPIN_UP:
-                if(startingPlace == 2) {
-                    launcherController.setGoal(closeTargetLauncherKineticState);
-                    if (launcher.getVelocity() > CLOSE_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < CLOSE_LAUNCHER_MAX_VELOCITY) {
-                        launchState = LaunchState.LAUNCH;
-                    }
-                } else if(startingPlace == 1) {
-                    launcherController.setGoal(farTargetLauncherKineticState);
-                    if (launcher.getVelocity() > FAR_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < FAR_LAUNCHER_MAX_VELOCITY) {
-                        launchState = LaunchState.LAUNCH;
-                    }
+                launcherController.setGoal(targetLauncherKineticState);
+                if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < LAUNCHER_MAX_VELOCITY) {
+                    launchState = LaunchState.LAUNCH;
                 }
                 break;
             case LAUNCH:
