@@ -68,12 +68,12 @@ public class MainTeleop extends OpMode {
     final double launcherServoDown = 0.10;
     final double launcherServoUp = 0.47; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
     String launcherRange = "CLOSE"; // CLOSE or FAR
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1460;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1540; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1480;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1560;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1750;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1850;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 1780; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 1740;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 1820;
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -121,20 +121,18 @@ public class MainTeleop extends OpMode {
         // TODO: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
         // TODO: FIND REAL PARK & SCORE POSE
         parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
-        scorePose = new Pose(91, 91, Math.toRadians(45));
+        scorePose = new Pose(90, 90, Math.toRadians(45));
 
         if(startingPlace == 1) {
             // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
-            startingPose = new Pose(88, 8, Math.toRadians(90));
-            follower.setStartingPose(startingPose);
+            startingPose = new Pose(86, 50, Math.toRadians(90));
         } else if (startingPlace == 2) {
             startingPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
-            follower.setStartingPose(startingPose);
         }
+
 
         if(colorAlliance == 1) {
             // Set lazy curve to red alliance base if on team red
-            telemetry.addLine("correct");
             parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
@@ -143,9 +141,9 @@ public class MainTeleop extends OpMode {
                     .addPath(new Path(new BezierLine(follower::getPose, scorePose)))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, scorePose.getHeading(), 0.8))
                     .build();
+            follower.setStartingPose(startingPose);
         } else {
             // Set lazy curve to blue alliance by default
-            telemetry.addLine("incorrect");
             parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, parkPose.mirror())))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
@@ -223,7 +221,7 @@ public class MainTeleop extends OpMode {
             }
         }
 
-        if(gamepad1.leftBumperWasPressed()) {
+        if(gamepad1.rightBumperWasPressed()) {
             automatedDrive = !automatedDrive;
             if(automatedDrive) {
                 follower.followPath(shootChain.get());
@@ -233,7 +231,7 @@ public class MainTeleop extends OpMode {
         }
 
         //Slow Mode toggle
-        if (gamepad1.rightBumperWasPressed()) {
+        if (gamepad1.leftBumperWasPressed()) {
             slowMode = !slowMode;
         }
 
@@ -254,9 +252,11 @@ public class MainTeleop extends OpMode {
         if (gamepad2.yWasPressed()) {
             launcherRange = "CLOSE";
             launcherController.setGoal(closeTargetLauncherKineticState);
+            scorePose = new Pose(90, 90, Math.toRadians(45));
         } else if (gamepad2.xWasPressed()) {
             launcherRange = "FAR";
             launcherController.setGoal(farTargetLauncherKineticState);
+            scorePose = new Pose(87, 18, Math.toRadians(68)); // Scoring Pose of our robot.
         } else if (gamepad2.bWasPressed()) { // stop flywheel
             launcherController.setGoal(stopLauncherKineticState);
         }

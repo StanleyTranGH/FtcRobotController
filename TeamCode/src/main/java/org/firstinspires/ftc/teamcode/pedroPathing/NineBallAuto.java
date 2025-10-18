@@ -40,12 +40,12 @@ public class NineBallAuto extends OpMode{
     Servo launcherServo;
     final double launcherServoDown = 0.08;
     final double launcherServoUp = 0.47; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1520; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1460;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1540; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1480;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1560;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1750;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1850;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 1780; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 1740;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 1820;
     final double STOP_SPEED = 0.0;
     final double MAX_FEED_TIME = 0.35;
     final double MAX_WAITING_TIME = 0.8;
@@ -82,18 +82,18 @@ public class NineBallAuto extends OpMode{
     // TODO: CHANGE THIS START TO CLOSE START
     private Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
     private Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
-    private Pose scorePose = new Pose(91, 91, Math.toRadians(45)); // Scoring Pose of our robot.
+    private Pose scorePose = new Pose(90, 90, Math.toRadians(45)); // Scoring Pose of our robot.
     private final Pose pickup1Pose = new Pose(100, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
 
     private final Pose pickup2Pose = new Pose(100, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
-    private final Pose collect2Pose = new Pose(127, 60, Math.toRadians(0)); // Collect second set of artifacts
+    private final Pose collect2Pose = new Pose(127, 58, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 35, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(127, 35, Math.toRadians(0)); // Collect third set of artifacts
     private final Pose collect4aPose = new Pose(132, 17, Math.toRadians(340)); // Collect the first of the fourth set of artifacts
-    private final Pose collect4bPose = new Pose(132, 12, Math.toRadians(340)); // Collect the second of the fourth set of artifacts
+    private final Pose collect4bPose = new Pose(132, 10, Math.toRadians(340)); // Collect the second of the fourth set of artifacts
     private final Pose collect4bControlPose = new Pose(128, 16, Math.toRadians(340)); // Control for collecting the 4b artifact
-    private final Pose collect4cPose = new Pose(133, 9, Math.toRadians(270)); // Collect the third of the fourth set of artifacts
+    private final Pose collect4cPose = new Pose(133, 7, Math.toRadians(270)); // Collect the third of the fourth set of artifacts
     private final Pose collect4cControlPose = new Pose(131, 13, Math.toRadians(270)); // Control for collecting the 4c artifact
     private Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
@@ -108,14 +108,14 @@ public class NineBallAuto extends OpMode{
             // DONE: CHANGE THIS POSE TO FAR SCAN
             scanPose = new Pose(88, 49, Math.toRadians(97)); // Scan Obelisk
             // TODO: CHANGE THIS POSE TO FAR SCORE
-            scorePose = new Pose(87, 18, Math.toRadians(67)); // Scoring Pose of our robot.
+            scorePose = new Pose(87, 18, Math.toRadians(68)); // Scoring Pose of our robot.
             parkPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.
         } else if (startingPlace == 2) { // Close
             // DONE: CHANGE THIS START POSE TO CLOSE START
             startPose = new Pose(125, 120, Math.toRadians(37)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE SCAN
             scanPose = new Pose(88, 100, Math.toRadians(103)); // Scan Obelisk
-            scorePose = new Pose(91, 91, Math.toRadians(45)); // Scoring Pose of our robot.
+            scorePose = new Pose(90, 90, Math.toRadians(45)); // Scoring Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE PARK
             parkPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot.
         }
@@ -292,6 +292,7 @@ public class NineBallAuto extends OpMode{
         switch (pathState) {
             case 0:
                 shotCounter = 0;
+                intakeMotor.setPower(INTAKING);
                 if(startingPlace == 2) {
                     launcherController.setGoal(closeTargetLauncherKineticState);
                 } else {
@@ -386,6 +387,7 @@ public class NineBallAuto extends OpMode{
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup2, true);
                     launcherController.setGoal(closeTargetLauncherKineticState);
+                    shotCounter = 0;
                     setPathState(7);
                 }
                 break;
