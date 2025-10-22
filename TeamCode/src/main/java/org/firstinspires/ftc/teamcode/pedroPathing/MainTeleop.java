@@ -1,8 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
-import static org.firstinspires.ftc.teamcode.pedroPathing.NineBallAuto.colorAlliance;
-import static org.firstinspires.ftc.teamcode.pedroPathing.NineBallAuto.startingPlace;
 
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorEx;
@@ -49,6 +47,10 @@ public class MainTeleop extends OpMode {
     private TelemetryManager telemetryM;
     private boolean slowMode = false;
     private double slowModeMultiplier = 0.5;
+
+    // Collects the starting place from either the Nine Ball or Twelve Ball autos, depending on which is used
+    private int teleopStartingPlace = 0;
+    private int teleopColorAlliance = 0;
 
     // Limelight fields
     private Limelight3A limelight;
@@ -118,20 +120,26 @@ public class MainTeleop extends OpMode {
         limelight.pipelineSwitch(0); // AprilTag pipeline
         limelight.start();
 
+        if(NineBallAuto.startingPlace == 1 || NineBallAuto.startingPlace == 2) {
+            teleopStartingPlace = NineBallAuto.startingPlace;
+        } else if (TwelveBallAuto.startingPlace == 1 || TwelveBallAuto.startingPlace == 2) {
+            teleopStartingPlace = TwelveBallAuto.startingPlace;
+        }
+
         // TODO: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
         // TODO: FIND REAL PARK & SCORE POSE
         parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
         scorePose = new Pose(90, 90, Math.toRadians(45));
 
-        if(startingPlace == 1) {
+        if(teleopStartingPlace == 1) {
             // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
             startingPose = new Pose(86, 50, Math.toRadians(90));
-        } else if (startingPlace == 2) {
+        } else if (teleopStartingPlace == 2) {
             startingPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
         }
 
 
-        if(colorAlliance == 1) {
+        if(teleopColorAlliance == 1) {
             // Set lazy curve to red alliance base if on team red
             parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
@@ -141,7 +149,7 @@ public class MainTeleop extends OpMode {
                     .addPath(new Path(new BezierLine(follower::getPose, scorePose)))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, scorePose.getHeading(), 0.8))
                     .build();
-            follower.setStartingPose(startingPose);
+
         } else {
             // Set lazy curve to blue alliance by default
             parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
@@ -152,14 +160,69 @@ public class MainTeleop extends OpMode {
                     .addPath(new Path(new BezierLine(follower::getPose, scorePose.mirror())))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, (180 - scorePose.getHeading()), 0.8))
                     .build();
-            follower.setStartingPose(startingPose.mirror());
+            startingPose = startingPose.mirror();
         }
 
         telemetry.addData("Status", "Initialized");
     }
 
     @Override
+    public void init_loop() {
+        telemetry.addLine("Press A for Red and B for Blue");
+        telemetry.addLine("Press X for Far and Y for Close");
+
+        if (gamepad1.aWasPressed()) {
+            teleopColorAlliance = 1;
+        } else if (gamepad1.bWasPressed()) {
+            teleopColorAlliance = 2;
+        } else if (gamepad1.xWasPressed()) {
+            teleopStartingPlace = 1;
+        } else if (gamepad1.yWasPressed()) {
+            teleopStartingPlace = 2;
+        }
+
+        parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
+        scorePose = new Pose(90, 90, Math.toRadians(45));
+
+        if(teleopStartingPlace == 1) {
+            // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+            startingPose = new Pose(86, 50, Math.toRadians(90));
+        } else if (teleopStartingPlace == 2) {
+            startingPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+        }
+
+
+        if(teleopColorAlliance == 1) {
+            // Set lazy curve to red alliance base if on team red
+            parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                    .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
+                    .build();
+            shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                    .addPath(new Path(new BezierLine(follower::getPose, scorePose)))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, scorePose.getHeading(), 0.8))
+                    .build();
+
+        } else {
+            // Set lazy curve to blue alliance by default
+            parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                    .addPath(new Path(new BezierLine(follower::getPose, parkPose.mirror())))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
+                    .build();
+            shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                    .addPath(new Path(new BezierLine(follower::getPose, scorePose.mirror())))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, (180 - scorePose.getHeading()), 0.8))
+                    .build();
+            startingPose = startingPose.mirror();
+        }
+
+        telemetry.addData("Current Selected Alliance", teleopColorAlliance);
+        telemetry.addData("Current Selected Starting Position", teleopStartingPlace);
+    }
+
+    @Override
     public void start() {
+        follower.setStartingPose(startingPose);
         follower.startTeleopDrive(true);
     }
 
@@ -174,7 +237,7 @@ public class MainTeleop extends OpMode {
             //In case the drivers want to use a "slowMode" you can scale the vectors
             //This is the normal version to use in the TeleOp
             if (!slowMode) {
-                if(colorAlliance == 1) {
+                if(teleopColorAlliance == 1) {
                     follower.setTeleOpDrive(
                             -gamepad1.left_stick_y,
                             -gamepad1.left_stick_x,
@@ -193,7 +256,7 @@ public class MainTeleop extends OpMode {
             }
                 //This is how it looks with slowMode on
             else {
-                if(colorAlliance == 1) {
+                if(teleopColorAlliance == 1) {
                     follower.setTeleOpDrive(
                             -gamepad1.left_stick_y * slowModeMultiplier,
                             -gamepad1.left_stick_x * slowModeMultiplier,
@@ -276,8 +339,8 @@ public class MainTeleop extends OpMode {
         telemetry.addData("Launcher Velocity", launcher.getVelocity());
 
         telemetry.addLine("-------- VARIABLES --------");
-        telemetry.addData("Current Alliance", colorAlliance);
-        telemetry.addData("Starting Position", startingPlace);
+        telemetry.addData("Current Alliance", teleopColorAlliance);
+        telemetry.addData("Starting Position", teleopStartingPlace);
 
     }
 

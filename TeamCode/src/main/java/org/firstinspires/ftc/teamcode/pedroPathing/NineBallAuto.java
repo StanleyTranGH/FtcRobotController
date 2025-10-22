@@ -321,7 +321,8 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcherController.setGoal(stopLauncherKineticState);
+                        // TODO: Test if leaving wheel on is fine
+                       // launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
                         follower.followPath(grabPickup1, true);
                         setPathState(2);
@@ -361,7 +362,8 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcherController.setGoal(stopLauncherKineticState);
+                        // TODO: Test if leaving wheel on is fine
+                        // launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(grabPickup2, true);
                         setPathState(5);
                     }
@@ -426,7 +428,8 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcherController.setGoal(stopLauncherKineticState);
+                        // TODO: Test if leaving wheel on is fine
+                        //launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
                         follower.followPath(grabPickup3, true);
                         setPathState(102);
@@ -465,7 +468,8 @@ public class NineBallAuto extends OpMode{
                     if(shotCounter < 3) {
                         launch(true);
                     } else {
-                        launcherController.setGoal(stopLauncherKineticState);
+                        // TODO: Test if leaving wheel on is fine
+                        //launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
                         follower.followPath(collectPickup4, 0.5, true);
                         setPathState(105);
