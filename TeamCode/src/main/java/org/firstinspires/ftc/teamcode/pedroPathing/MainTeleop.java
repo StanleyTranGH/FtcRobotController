@@ -65,17 +65,23 @@ public class MainTeleop extends OpMode {
     DcMotor intakeMotor;
     DcMotorEx launcher;
     Servo launcherServo;
+    Servo sorterServo;
+    Servo leftGateServo;
     ElapsedTime feederTimer = new ElapsedTime();
 
-    final double launcherServoDown = 0.10;
-    final double launcherServoUp = 0.47; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double launcherServoDown = 0.21;
+    final double launcherServoUp = 0.49; // TODO: SET THESE VALUES TO PROPER SERVO POSITION
+    final double sorterServoOpenLeft = 0.75; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.32; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
+    final double openLeftGateServo = 0.38; //DONE: GET THE GATE OPEN VALUE
     String launcherRange = "CLOSE"; // CLOSE or FAR
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1540; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1480;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1560;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1780; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1740;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1820;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1600; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1540;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1620;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 1880; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 1840;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 1920;
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -98,6 +104,9 @@ public class MainTeleop extends OpMode {
         intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
+        sorterServo = hardwareMap.get(Servo.class, "sorterServo");
+        leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
+
 
         follower = Constants.createFollower(hardwareMap);
         follower.update();
@@ -114,6 +123,8 @@ public class MainTeleop extends OpMode {
 
         launcherServo.setPosition(launcherServoDown);
         launcherController.setGoal(stopLauncherKineticState);
+        sorterServo.setPosition(sorterServoOpenRight);
+        leftGateServo.setPosition(closeLeftGateServo);
 
         // Limelight Initialization
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -129,7 +140,7 @@ public class MainTeleop extends OpMode {
         // TODO: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
         // TODO: FIND REAL PARK & SCORE POSE
         parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
-        scorePose = new Pose(90, 90, Math.toRadians(45));
+        scorePose = new Pose(92, 88, Math.toRadians(225));
 
         if(teleopStartingPlace == 1) {
             // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
@@ -158,7 +169,7 @@ public class MainTeleop extends OpMode {
                     .build();
             shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
                     .addPath(new Path(new BezierLine(follower::getPose, scorePose.mirror())))
-                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, (180 - scorePose.getHeading()), 0.8))
+                    .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, scorePose.mirror().getHeading(), 0.8))
                     .build();
             startingPose = startingPose.mirror();
         }
@@ -311,17 +322,29 @@ public class MainTeleop extends OpMode {
             intakeMotor.setPower(0);
         }
 
+        if(gamepad1.dpadLeftWasPressed()) {
+            sorterServo.setPosition(sorterServoOpenRight);
+        } else if(gamepad1.dpadRightWasPressed()) {
+            sorterServo.setPosition(sorterServoOpenLeft);
+        }
+
         // Launching
         if (gamepad2.yWasPressed()) {
             launcherRange = "CLOSE";
             launcherController.setGoal(closeTargetLauncherKineticState);
-            scorePose = new Pose(90, 90, Math.toRadians(45));
+            scorePose = new Pose(92, 88, Math.toRadians(225));
         } else if (gamepad2.xWasPressed()) {
             launcherRange = "FAR";
             launcherController.setGoal(farTargetLauncherKineticState);
-            scorePose = new Pose(87, 18, Math.toRadians(68)); // Scoring Pose of our robot.
+            scorePose = new Pose(87, 18, Math.toRadians(248)); // Scoring Pose of our robot.
         } else if (gamepad2.bWasPressed()) { // stop flywheel
             launcherController.setGoal(stopLauncherKineticState);
+        }
+
+        if(gamepad2.dpadUpWasPressed()) {
+            leftGateServo.setPosition(openLeftGateServo);
+        } else if(gamepad2.dpadDownWasPressed()) {
+            leftGateServo.setPosition(closeLeftGateServo);
         }
 
         launch(gamepad2.rightBumperWasPressed());
