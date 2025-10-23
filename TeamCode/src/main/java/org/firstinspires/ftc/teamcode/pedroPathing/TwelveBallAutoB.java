@@ -8,6 +8,8 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -17,12 +19,14 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import java.util.List;
+
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 
-@Autonomous(name = "A Twelve Ball Auto", group = "Official")
-public class TwelveBallAuto extends OpMode{
+@Autonomous(name = "Twelve Ball Auto B", group = "Official")
+public class TwelveBallAutoB extends OpMode {
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
 
@@ -55,7 +59,9 @@ public class TwelveBallAuto extends OpMode{
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
     KineticState farTargetLauncherKineticState = new KineticState(0, FAR_LAUNCHER_TARGET_VELOCITY);
-    KineticState currentLauncherKineticState = new KineticState(0, 0);;
+    KineticState currentLauncherKineticState = new KineticState(0, 0);
+    ;
+
     private enum LaunchState {
         IDLE,
         SPIN_UP,
@@ -63,8 +69,10 @@ public class TwelveBallAuto extends OpMode{
         LAUNCHING,
         WAITING,
     }
+
     private LaunchState launchState;
     ElapsedTime feederTimer = new ElapsedTime();
+    ElapsedTime gateTimer = new ElapsedTime();
     String motif = "Not Detected Yet";
     int detectedID;
     int obeliskID = 0; // Having separate detectedID and obeliskID prevents goal targeting April Tags from being mistaken as obelisk
@@ -78,14 +86,12 @@ public class TwelveBallAuto extends OpMode{
     boolean lockedIn = false;
     private int pathState;
     // TODO: CHANGE THIS START TO CLOSE START
-    private Pose startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
-    private Pose scanPose = new Pose(88, 75, Math.toRadians(95)); // Scan Obelisk
-    private Pose scorePose = new Pose(90, 90, Math.toRadians(45)); // Scoring Pose of our robot.
+    private Pose startPose = new Pose(88, 8, Math.toRadians(270)); // Start Pose of our robot.
+    private Pose scanPose = new Pose(88, 75, Math.toRadians(275)); // Scan Obelisk
+    private Pose scorePose = new Pose(90, 90, Math.toRadians(225)); // Scoring Pose of our robot.
     private final Pose pickup1Pose = new Pose(100, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
-    private final Pose openGatePose = new Pose(134, 71, Math.toRadians(90)); // Opens Gate.
-    private final Pose openGateControlPose = new Pose(92, 89, Math.toRadians(90)); // Control pose for Scoring 1 while avoiding Artifacts 2
-    private final Pose score1ControlPose = new Pose(107, 74, Math.toRadians(90)); // Control pose to open Gate
+
     private final Pose pickup2Pose = new Pose(100, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
     private final Pose collect2Pose = new Pose(127, 58, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose pickup3Pose = new Pose(100, 35, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
@@ -97,30 +103,31 @@ public class TwelveBallAuto extends OpMode{
     private final Pose collect4cControlPose = new Pose(131, 13, Math.toRadians(270)); // Control for collecting the 4c artifact
     private Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
-    PathChain scanObelisk, scorePreload, scorePreloadSkipScan, grabPickup1, collectPickup1, openGate, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, collectPickup4, scorePickup4, park;
+    PathChain scanObelisk, scorePreload, scorePreloadSkipScan, grabPickup1, collectPickup1, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, collectPickup4, scorePickup4, park;
+
     void buildPaths() {
 
     /* Here is an example for Constant Interpolation
     scorePreload.setConstantInterpolation(startPose.getHeading()); */
 
-        if(startingPlace == 1) { // Far
-            startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
+        if (startingPlace == 1) { // Far
+            startPose = new Pose(88, 8, Math.toRadians(270)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO FAR SCAN
-            scanPose = new Pose(88, 49, Math.toRadians(97)); // Scan Obelisk
-            // DONE: CHANGE THIS POSE TO FAR SCORE
-            scorePose = new Pose(87, 18, Math.toRadians(68)); // Scoring Pose of our robot.
+            scanPose = new Pose(88, 49, Math.toRadians(275)); // Scan Obelisk
+            // TODO: CHANGE THIS POSE TO FAR SCORE
+            scorePose = new Pose(87, 18, Math.toRadians(248)); // Scoring Pose of our robot.
             parkPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.
         } else if (startingPlace == 2) { // Close
             // DONE: CHANGE THIS START POSE TO CLOSE START
-            startPose = new Pose(125, 120, Math.toRadians(37)); // Start Pose of our robot.
+            startPose = new Pose(125, 120, Math.toRadians(217)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE SCAN
-            scanPose = new Pose(88, 100, Math.toRadians(103)); // Scan Obelisk
+            scanPose = new Pose(88, 100, Math.toRadians(283)); // Scan Obelisk
             scorePose = new Pose(92, 88, Math.toRadians(225)); // Scoring Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE PARK
             parkPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot.
         }
 
-        if(colorAlliance == 1) {
+        if (colorAlliance == 1) {
             scanObelisk = follower.pathBuilder()
                     .addPath(new BezierLine(startPose, scanPose))
                     .setLinearHeadingInterpolation(startPose.getHeading(), scanPose.getHeading())
@@ -145,24 +152,12 @@ public class TwelveBallAuto extends OpMode{
                     .addPath(new BezierLine(pickup1Pose, collect1Pose))
                     .setTangentHeadingInterpolation()
                     .build();
-            openGate = follower.pathBuilder()
-                    .addPath(new BezierCurve(collect1Pose, openGateControlPose, openGatePose))
-                    .setLinearHeadingInterpolation(collect1Pose.getHeading(), openGatePose.getHeading())
-                    .build();
 
             /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-            // Avoid artifact 2 if shooting from the far zone
-            if(startingPlace == 1) {
-                scorePickup1 = follower.pathBuilder()
-                        .addPath(new BezierCurve(openGatePose, score1ControlPose, scorePose))
-                        .setLinearHeadingInterpolation(openGatePose.getHeading(), scorePose.getHeading())
-                        .build();
-            } else {
-                scorePickup1 = follower.pathBuilder()
-                        .addPath(new BezierLine(openGatePose, scorePose))
-                        .setLinearHeadingInterpolation(openGatePose.getHeading(), scorePose.getHeading())
-                        .build();
-            }
+            scorePickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect1Pose, scorePose))
+                    .setLinearHeadingInterpolation(collect1Pose.getHeading(), scorePose.getHeading())
+                    .build();
 
             /* This is our grabPickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
             grabPickup2 = follower.pathBuilder()
@@ -214,7 +209,7 @@ public class TwelveBallAuto extends OpMode{
                     .addPath(new BezierLine(scorePose, parkPose))
                     .setLinearHeadingInterpolation(scorePose.getHeading(), parkPose.getHeading())
                     .build();
-        } else if(colorAlliance == 2) { // Mirrored poses for blue side
+        } else if (colorAlliance == 2) { // Mirrored poses for blue side
             startPose = startPose.mirror();
             scanObelisk = follower.pathBuilder()
                     .addPath(new BezierLine(startPose, scanPose.mirror()))
@@ -240,25 +235,12 @@ public class TwelveBallAuto extends OpMode{
                     .addPath(new BezierLine(pickup1Pose.mirror(), collect1Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
-            openGate = follower.pathBuilder()
-                    .addPath(new BezierCurve(collect1Pose.mirror(), openGateControlPose.mirror(), openGatePose.mirror()))
-                    .setLinearHeadingInterpolation(collect1Pose.mirror().getHeading(), openGatePose.mirror().getHeading())
+
+            /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
+            scorePickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(collect1Pose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(collect1Pose.mirror().getHeading(), scorePose.mirror().getHeading())
                     .build();
-
-            // Avoid artifact 2 if shooting from the far zone
-            if(startingPlace == 1) {
-                scorePickup1 = follower.pathBuilder()
-                        .addPath(new BezierCurve(openGatePose.mirror(), score1ControlPose.mirror(), scorePose.mirror()))
-                        .setLinearHeadingInterpolation(openGatePose.mirror().getHeading(), scorePose.mirror().getHeading())
-                        .build();
-            } else {
-                /* This is our scorePickup1 PathChain. We are using a single path with a BezierLine, which is a straight line. */
-                scorePickup1 = follower.pathBuilder()
-                        .addPath(new BezierLine(openGatePose.mirror(), scorePose.mirror()))
-                        .setLinearHeadingInterpolation(openGatePose.mirror().getHeading(), scorePose.mirror().getHeading())
-                        .build();
-            }
-
 
             /* This is our grabPickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
             grabPickup2 = follower.pathBuilder()
@@ -313,18 +295,61 @@ public class TwelveBallAuto extends OpMode{
         }
 
     }
+
     public void autonomousPathUpdate() {
         switch (pathState) {
             case 0:
                 shotCounter = 0;
                 intakeMotor.setPower(INTAKING);
-                if(startingPlace == 2) {
+                if (startingPlace == 2) {
                     launcherController.setGoal(closeTargetLauncherKineticState);
                 } else {
                     launcherController.setGoal(farTargetLauncherKineticState);
                 }
-                follower.followPath(scorePreloadSkipScan);
-                setPathState(1);
+                follower.followPath(scanObelisk);
+                setPathState(12);
+
+                break;
+            case 12:
+
+                // DONE: SCAN MOTIF
+
+                LLResult result = limelight.getLatestResult();
+
+                if (result != null && result.isValid()) {
+                    // Valid target detected
+                    List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+                    for (LLResultTypes.FiducialResult fiducial : fiducials) {
+                        detectedID = fiducial.getFiducialId();
+                    }
+
+                    if (detectedID == 21) {
+                        obeliskID = detectedID;
+                        motif = "GPP (Green Purple Purple)";
+                    } else if (detectedID == 22) {
+                        obeliskID = detectedID;
+                        motif = "PGP (Purple Green Purple)";
+                    } else if (detectedID == 23) {
+                        obeliskID = detectedID;
+                        motif = "PPG (Purple Purple Green)";
+                    }
+                }
+                if (pathTimer.getElapsedTimeSeconds() > 5 && !follower.isBusy()) {
+                    obeliskID = 23;
+                    motif = "Couldn't Detect! Guessing PPG";
+                }
+
+                // DONE: ADJUST ELAPSED TIME SECONDS OR CHANGE IF NEEDED
+                if (obeliskID != 0) {
+                    follower.followPath(scorePreload);
+                    if (startingPlace == 2) {
+                        launcherController.setGoal(closeTargetLauncherKineticState);
+                    } else {
+                        launcherController.setGoal(farTargetLauncherKineticState);
+                    }
+                    intakeMotor.setPower(INTAKING);
+                    setPathState(1);
+                }
                 break;
 
             case 1:
@@ -336,48 +361,56 @@ public class TwelveBallAuto extends OpMode{
             */
 
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
-                if(!follower.isBusy()) {
+                if (!follower.isBusy()) {
                     /* DONE: SHOOT PRELOAD BALLS */
 
-                    if(shotCounter < 3) {
-                        launch(true);
+                    if (shotCounter < 3) {
+                        launch(true, false);
                     } else {
                         // TODO: Test if leaving wheel on is fine
-                        //launcherController.setGoal(stopLauncherKineticState);
+                        // launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
                         follower.followPath(grabPickup1, true);
+                        if (detectedID == 23) {
+                            sorterServo.setPosition(sorterServoOpenRight);
+                        } else {
+                            sorterServo.setPosition(sorterServoOpenLeft);
+                        }
                         setPathState(2);
                     }
                 }
                 break;
             case 2:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
+                if (!follower.isBusy()) {
                     /* DONE: ACTIVATE INTAKE */
                     intakeMotor.setPower(INTAKING);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     /* TODO: DECIDE BEST PATH POWER */
-                    follower.followPath(collectPickup1, 0.5,true);
-                    setPathState(101);
-                }
-                break;
-            case 101:
-                /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
-                    follower.followPath(openGate,true);
+                    if (detectedID == 23) {
+                        follower.followPath(collectPickup1, 0.5, true);
+                    } else {
+                        follower.followPath(collectPickup1, 0.3, true); //TODO: FIND BEST SORTING PATH SPEED
+                    }
                     setPathState(3);
                 }
                 break;
             case 3:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
-                    /* TODO: BALL SORTING */
-
-
+                if (follower.getPose().getX() > 108 && detectedID == 22) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (follower.getPose().getX() > 113 && detectedID == 21) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (!follower.isBusy()) {
+                    if (detectedID == 21) {
+                        sorterServo.setPosition(sorterServoOpenLeft);
+                    }
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
-                    follower.followPath(scorePickup1,true);
-                    if(startingPlace == 2) {
+                    follower.followPath(scorePickup1, true);
+                    if (startingPlace == 2) {
                         launcherController.setGoal(closeTargetLauncherKineticState);
                     } else {
                         launcherController.setGoal(farTargetLauncherKineticState);
@@ -389,13 +422,35 @@ public class TwelveBallAuto extends OpMode{
             case 4:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
 
-                if(!follower.isBusy()) {
+
+                if (!follower.isBusy()) {
                     /* DONE: SHOOT BALLS */
-                    if(shotCounter < 3) {
-                        launch(true);
-                    } else {
+
+                    if (shotCounter == 0) {
+                        launch(true, false);
+                    }
+                    if (shotCounter == 1) {
+                        if (detectedID == 21) {
+                            launch(true, true);
+                        } else {
+                            launch(true, false);
+                        }
+                    } else if (shotCounter == 2) {
+                        if (detectedID == 22) {
+                            launch(true, true);
+                        } else {
+                            launch(true, false);
+                        }
+                    }
+                    if (shotCounter >= 3) {
                         // TODO: Test if leaving wheel on is fine
-                        //launcherController.setGoal(stopLauncherKineticState);
+                        // launcherController.setGoal(stopLauncherKineticState);
+                        leftGateServo.setPosition(closeLeftGateServo);
+                        if (detectedID == 22) {
+                            sorterServo.setPosition(sorterServoOpenRight);
+                        } else {
+                            sorterServo.setPosition(sorterServoOpenLeft);
+                        }
                         follower.followPath(grabPickup2, true);
                         setPathState(5);
                     }
@@ -404,23 +459,36 @@ public class TwelveBallAuto extends OpMode{
                 break;
             case 5:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
+                if (!follower.isBusy()) {
                     /* DONE: ACTIVATE INTAKE */
                     intakeMotor.setPower(INTAKING);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
-                    follower.followPath(collectPickup2, 0.5,true);
+                    if (detectedID == 22) {
+                        follower.followPath(collectPickup2, 0.5, true);
+                    } else {
+                        follower.followPath(collectPickup2, 0.3, true); //TODO: FIND BEST SORTING PATH SPEED
+                    }
                     setPathState(6);
                 }
                 break;
             case 6:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
-                    /* TODO: BALL SORTING */
+                if (follower.getPose().getX() > 108 && detectedID == 21) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (follower.getPose().getX() > 113 && detectedID == 23) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+
+                if (!follower.isBusy()) {
+                    if (detectedID == 23) {
+                        sorterServo.setPosition(sorterServoOpenLeft);
+                    }
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup2, true);
-                    if(startingPlace == 2) {
+                    if (startingPlace == 2) {
                         launcherController.setGoal(closeTargetLauncherKineticState);
                     } else {
                         launcherController.setGoal(farTargetLauncherKineticState);
@@ -431,76 +499,136 @@ public class TwelveBallAuto extends OpMode{
                 break;
             case 7:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
-                if(!follower.isBusy()) {
+                if (!follower.isBusy()) {
                     /* DONE: SHOOT BALLS */
-                    if(shotCounter < 3) {
-                        launch(true);
-                    } else {
-                        // TODO: Test if leaving wheel on is fine
-                        //launcherController.setGoal(stopLauncherKineticState);
+                    if (shotCounter == 0) {
+                        launch(true, false);
+                    }
+                    if (shotCounter == 1) {
+                        if (detectedID == 23) {
+                            launch(true, true);
+                        } else {
+                            launch(true, false);
+                        }
+                    } else if (shotCounter == 2) {
+                        if (detectedID == 21) {
+                            launch(true, true);
+                        } else {
+                            launch(true, false);
+                        }
+                    }
+                    if (shotCounter >= 3) {
+                        leftGateServo.setPosition(closeLeftGateServo);
+                        if (detectedID == 21) {
+                            sorterServo.setPosition(sorterServoOpenRight);
+                        } else {
+                            sorterServo.setPosition(sorterServoOpenLeft);
+                        }
+                        launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(grabPickup3, true);
-                        intakeMotor.setPower(STOP_SPEED);
-                        setPathState(8);
+                        intakeMotor.setPower(INTAKING);
+                        setPathState(102);
                     }
                 }
                 break;
-            case 8:
-                /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
+            case 102:
+                if (!follower.isBusy()) {
                     /* DONE: ACTIVATE INTAKE */
                     intakeMotor.setPower(INTAKING);
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
-                    follower.followPath(collectPickup3, 0.5,true);
-                    setPathState(9);
+                    /* TODO: DECIDE BEST PATH POWER */
+                    if (detectedID == 21) {
+                        follower.followPath(collectPickup3, 0.5, true);
+                    } else {
+                        follower.followPath(collectPickup3, 0.3, true);
+                    }
+                    setPathState(103);
                 }
                 break;
-            case 9:
+
+            case 103:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
+                if (follower.getPose().getX() > 108 && detectedID == 23) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (follower.getPose().getX() > 113 && detectedID == 22) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (!follower.isBusy()) {
                     /* TODO: BALL SORTING */
+                    if (detectedID == 22) {
+                        sorterServo.setPosition(sorterServoOpenLeft);
+                    }
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup3, true);
-                    if(startingPlace == 2) {
+                    if (startingPlace == 2) {
                         launcherController.setGoal(closeTargetLauncherKineticState);
                     } else {
                         launcherController.setGoal(farTargetLauncherKineticState);
                     }
                     shotCounter = 0;
-                    setPathState(10);
+                    setPathState(104);
                 }
                 break;
-            case 10:
+
+            case 104:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
-                if(!follower.isBusy()) {
+
+                if (!follower.isBusy()) {
                     /* DONE: SHOOT BALLS */
-                    if(shotCounter < 3) {
-                        launch(true);
-                    } else {
+                    if (shotCounter == 0) {
+                        launch(true, false);
+                    }
+                    if (shotCounter == 1) {
+                        if (detectedID == 22) {
+                            launch(true, true);
+                        } else {
+                            launch(true, false);
+                        }
+                    } else if (shotCounter == 2) {
+                        if (detectedID == 23) {
+                            launch(true, true);
+                        } else {
+                            launch(true, false);
+                        }
+                    }
+                    if (shotCounter >= 3) {
+                        // TODO: Test if leaving wheel on is fine
+                        //launcherController.setGoal(stopLauncherKineticState);
+                        intakeMotor.setPower(STOP_SPEED);
+                        leftGateServo.setPosition(closeLeftGateServo);
+                        sorterServo.setPosition(sorterServoOpenRight);
                         launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(park, true);
-                        intakeMotor.setPower(STOP_SPEED);
-                        setPathState(11);
+                        setPathState(107);
                     }
+
                 }
                 break;
-            case 11:
+            case 107:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
-                if(!follower.isBusy()) {
-                    setPathState(-1000);
+                if (!follower.isBusy()) {
+                    setPathState(-1001);
                 }
                 break;
+
+
         }
     }
 
-    /** These change the states of the paths and actions. It will also reset the timers of the individual switches **/
+    /**
+     * These change the states of the paths and actions. It will also reset the timers of the individual switches
+     **/
     public void setPathState(int pState) {
         pathState = pState;
         pathTimer.resetTimer();
     }
 
-    /** This method is called once at the init of the OpMode. **/
+    /**
+     * This method is called once at the init of the OpMode.
+     **/
     @Override
     public void init() {
         pathTimer = new Timer();
@@ -508,7 +636,7 @@ public class TwelveBallAuto extends OpMode{
         opmodeTimer.resetTimer();
 
         launchState = LaunchState.IDLE;
-        launch(false);
+        launch(false, false);
 
         follower = Constants.createFollower(hardwareMap);
 
@@ -519,6 +647,8 @@ public class TwelveBallAuto extends OpMode{
         intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         launcher = hardwareMap.get(DcMotorEx.class, "launcher");
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
+        sorterServo = hardwareMap.get(Servo.class, "sorterServo");
+        leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
 
         launcher.setZeroPowerBehavior(BRAKE);
 
@@ -530,6 +660,8 @@ public class TwelveBallAuto extends OpMode{
         launcherController.setGoal(stopLauncherKineticState);
 
         launcherServo.setPosition(launcherServoDown);
+        sorterServo.setPosition(sorterServoOpenRight);
+        leftGateServo.setPosition(closeLeftGateServo);
 
         // Ensure we're using pipeline 0
         limelight.pipelineSwitch(0);
@@ -540,11 +672,15 @@ public class TwelveBallAuto extends OpMode{
 
     }
 
-    /** This method is called continuously after Init while waiting for "play". **/
+    /**
+     * This method is called continuously after Init while waiting for "play".
+     **/
     @Override
     public void init_loop() {
         telemetry.addData("Status", "Initialized");
-        if(lockedIn == false) {
+        if (lockedIn == false) {
+            telemetry.addLine("PLEASE REMEMBER TO LOCK IT IN!!! I'M TALKING TO YOU!!! LOCK ME IN!!!!!!");
+
             telemetry.addLine("---------- PRESS RIGHT TRIGGER TO LOCK IN ----------");
             telemetry.addLine("Press A for Red and B for Blue");
 
@@ -582,8 +718,7 @@ public class TwelveBallAuto extends OpMode{
                 follower.setStartingPose(startPose);
                 lockedIn = true;
             }
-        }
-        else {
+        } else {
             telemetry.addLine("---------- LOCKED IN ----------");
 
             if (colorAlliance == 1) {
@@ -606,23 +741,27 @@ public class TwelveBallAuto extends OpMode{
         telemetry.update();
     }
 
-    /** This method is called once at the start of the OpMode.
-     * It runs all the setup actions, including building paths and starting the path system **/
+    /**
+     * This method is called once at the start of the OpMode.
+     * It runs all the setup actions, including building paths and starting the path system
+     **/
     @Override
     public void start() {
         opmodeTimer.resetTimer();
 
-        if(colorAlliance == 0) {
+        if (colorAlliance == 0) {
             colorAlliance = 1;
         }
-        if(startingPlace == 0) {
+        if (startingPlace == 0) {
             startingPlace = 2;
         }
 
         setPathState(0);
     }
 
-    /** This is the main loop of the OpMode, it will run repeatedly after clicking "Play". **/
+    /**
+     * This is the main loop of the OpMode, it will run repeatedly after clicking "Play".
+     **/
     @Override
     public void loop() {
 
@@ -645,10 +784,14 @@ public class TwelveBallAuto extends OpMode{
         telemetry.update();
     }
 
-    /** We do not use this because everything should automatically disable **/
+    /**
+     * We do not use this because everything should automatically disable
+     **/
     @Override
-    public void stop() {}
-    void launch(boolean shotRequested) {
+    public void stop() {
+    }
+
+    void launch(boolean shotRequested, boolean openGate) {
         switch (launchState) {
             case IDLE:
                 if (shotRequested) {
@@ -656,12 +799,12 @@ public class TwelveBallAuto extends OpMode{
                 }
                 break;
             case SPIN_UP:
-                if(startingPlace == 2) {
+                if (startingPlace == 2) {
                     launcherController.setGoal(closeTargetLauncherKineticState);
                     if (launcher.getVelocity() > CLOSE_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < CLOSE_LAUNCHER_MAX_VELOCITY) {
                         launchState = LaunchState.LAUNCH;
                     }
-                } else if(startingPlace == 1) {
+                } else if (startingPlace == 1) {
                     launcherController.setGoal(farTargetLauncherKineticState);
                     if (launcher.getVelocity() > FAR_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < FAR_LAUNCHER_MAX_VELOCITY) {
                         launchState = LaunchState.LAUNCH;
@@ -683,8 +826,11 @@ public class TwelveBallAuto extends OpMode{
                 }
                 break;
             case WAITING:
+                if (openGate) {
+                    leftGateServo.setPosition(openLeftGateServo);
+                }
                 if (shotCounter == 2 && feederTimer.seconds() > 0.1) {
-                    shotCounter = shotCounter + 1;
+                    shotCounter++;
                     feederTimer.reset();
                     launchState = LaunchState.IDLE;
                 } else if (feederTimer.seconds() > MAX_WAITING_TIME) {
@@ -693,6 +839,7 @@ public class TwelveBallAuto extends OpMode{
                     launchState = LaunchState.IDLE;
                 }
                 break;
+
         }
     }
 }
