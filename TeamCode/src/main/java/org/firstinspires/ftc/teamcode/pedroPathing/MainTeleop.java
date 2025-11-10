@@ -51,6 +51,7 @@ public class MainTeleop extends OpMode {
     // Collects the starting place from either the Nine Ball or Twelve Ball autos, depending on which is used
     private int teleopStartingPlace = 0;
     private int teleopColorAlliance = 0;
+    private boolean robotCentricOn = false;
 
     // Limelight fields
     private Limelight3A limelight;
@@ -58,7 +59,7 @@ public class MainTeleop extends OpMode {
     // 0.019, 0.0006, 0.0006
     // 0.018, 0.0007, 0.0006
     // 0.018, 0.0006, 0.0007
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.001);
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.0015);
     ControlSystem launcherController;
 
     // Mechanisms
@@ -69,19 +70,19 @@ public class MainTeleop extends OpMode {
     Servo leftGateServo;
     ElapsedTime feederTimer = new ElapsedTime();
 
-    final double launcherServoDown = 0.21;
+    final double launcherServoDown = 0.18;
     final double launcherServoUp = 0.49; // TODO: SET THESE VALUES TO PROPER SERVO POSITION
-    final double sorterServoOpenLeft = 0.75; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.32; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double sorterServoOpenLeft = 0.67; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.36; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
-    final double openLeftGateServo = 0.38; //DONE: GET THE GATE OPEN VALUE
+    final double openLeftGateServo = 0.44; //DONE: GET THE GATE OPEN VALUE
     String launcherRange = "CLOSE"; // CLOSE or FAR
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1600; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1540;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1620;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1880; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1840;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1920;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1600;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 1760;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 1820;
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -89,6 +90,7 @@ public class MainTeleop extends OpMode {
     KineticState currentLauncherKineticState = new KineticState(0, 0);;
 
     final double MAX_FEED_TIME = 0.35;
+    final double MAX_SCAN_TIME = 2.0;
     private enum LaunchState {
         IDLE,
         SPIN_UP,
@@ -133,27 +135,34 @@ public class MainTeleop extends OpMode {
 
         if(NineBallAuto.startingPlace == 1 || NineBallAuto.startingPlace == 2) {
             teleopStartingPlace = NineBallAuto.startingPlace;
-        } else if (TwelveBallAuto.startingPlace == 1 || TwelveBallAuto.startingPlace == 2) {
-            teleopStartingPlace = TwelveBallAuto.startingPlace;
+        } else if (TwelveBallAutoB.startingPlace == 1 || TwelveBallAutoB.startingPlace == 2) {
+            teleopStartingPlace = TwelveBallAutoB.startingPlace;
         }
 
-        // TODO: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
+        if(NineBallAuto.colorAlliance == 1 || NineBallAuto.colorAlliance == 2) {
+            teleopColorAlliance = NineBallAuto.colorAlliance;
+        } else if (TwelveBallAutoB.startingPlace == 1 || TwelveBallAutoB.startingPlace == 2) {
+            teleopColorAlliance = TwelveBallAutoB.colorAlliance;
+        }
+
+        // DONE: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
         // TODO: FIND REAL PARK & SCORE POSE
         parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
         scorePose = new Pose(92, 88, Math.toRadians(225));
 
         if(teleopStartingPlace == 1) {
             // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
-            startingPose = new Pose(86, 50, Math.toRadians(90));
+            startingPose = new Pose(86, 50, Math.toRadians(270));
         } else if (teleopStartingPlace == 2) {
-            startingPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+            startingPose = new Pose(122, 95, Math.toRadians(270)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
         }
+
 
 
         if(teleopColorAlliance == 1) {
             // Set lazy curve to red alliance base if on team red
             parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
-                    .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
+                    .addPath(new Path(new BezierLine(follower::getPose, parkPose.mirror())))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
                     .build();
             shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
@@ -164,7 +173,7 @@ public class MainTeleop extends OpMode {
         } else {
             // Set lazy curve to blue alliance by default
             parkChain = () -> follower.pathBuilder() //Lazy Curve Generation
-                    .addPath(new Path(new BezierLine(follower::getPose, parkPose.mirror())))
+                    .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
                     .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(90), 0.8))
                     .build();
             shootChain = () -> follower.pathBuilder() //Lazy Curve Generation
@@ -193,13 +202,13 @@ public class MainTeleop extends OpMode {
         }
 
         parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
-        scorePose = new Pose(90, 90, Math.toRadians(45));
+        scorePose = new Pose(87.5, 91, Math.toRadians(-141));
 
         if(teleopStartingPlace == 1) {
             // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
-            startingPose = new Pose(86, 50, Math.toRadians(90));
+            startingPose = new Pose(86, 50, Math.toRadians(270));
         } else if (teleopStartingPlace == 2) {
-            startingPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
+            startingPose = new Pose(122, 95, Math.toRadians(270)); // Park Pose of our robot. // Park Pose of our robot.; //See ExampleAuto to understand how to use this
         }
 
 
@@ -229,6 +238,14 @@ public class MainTeleop extends OpMode {
 
         telemetry.addData("Current Selected Alliance", teleopColorAlliance);
         telemetry.addData("Current Selected Starting Position", teleopStartingPlace);
+
+        telemetry.addLine("------------------------------");
+
+        telemetry.addLine("Press START if robot centric mode needs to be turned on");
+        if(gamepad1.startWasPressed()) {
+            robotCentricOn = !robotCentricOn;
+        }
+        telemetry.addData("Is Robot Centric On", robotCentricOn);
     }
 
     @Override
@@ -253,14 +270,14 @@ public class MainTeleop extends OpMode {
                             -gamepad1.left_stick_y,
                             -gamepad1.left_stick_x,
                             -gamepad1.right_stick_x,
-                            false // Field Centric
+                            robotCentricOn // Field Centric
                     );
                 } else {
                     follower.setTeleOpDrive(
                             -gamepad1.left_stick_y,
                             -gamepad1.left_stick_x,
                             -gamepad1.right_stick_x,
-                            false, // Field Centric
+                            robotCentricOn, // Field Centric
                             Math.toRadians(180)
                     );
                 }
@@ -272,14 +289,14 @@ public class MainTeleop extends OpMode {
                             -gamepad1.left_stick_y * slowModeMultiplier,
                             -gamepad1.left_stick_x * slowModeMultiplier,
                             -gamepad1.right_stick_x * slowModeMultiplier,
-                            false // Field Centric
+                            robotCentricOn // Field Centric
                     );
                 } else {
                     follower.setTeleOpDrive(
                             -gamepad1.left_stick_y * slowModeMultiplier,
                             -gamepad1.left_stick_x * slowModeMultiplier,
                             -gamepad1.right_stick_x * slowModeMultiplier,
-                            false, // Field Centric
+                            robotCentricOn, // Field Centric
                             Math.toRadians(180)
                     );
                 }
@@ -309,6 +326,10 @@ public class MainTeleop extends OpMode {
             slowMode = !slowMode;
         }
 
+        if(gamepad1.startWasPressed()) {
+            robotCentricOn = !robotCentricOn;
+        }
+
         // Intaking
         if (gamepad1.xWasPressed()) {
             intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -332,11 +353,11 @@ public class MainTeleop extends OpMode {
         if (gamepad2.yWasPressed()) {
             launcherRange = "CLOSE";
             launcherController.setGoal(closeTargetLauncherKineticState);
-            scorePose = new Pose(92, 88, Math.toRadians(225));
+            scorePose = new Pose(87.5, 91, Math.toRadians(-141));
         } else if (gamepad2.xWasPressed()) {
             launcherRange = "FAR";
             launcherController.setGoal(farTargetLauncherKineticState);
-            scorePose = new Pose(87, 18, Math.toRadians(248)); // Scoring Pose of our robot.
+            scorePose = new Pose(92.8, 13.6, Math.toRadians(-110.3)); // Scoring Pose of our robot.
         } else if (gamepad2.bWasPressed()) { // stop flywheel
             launcherController.setGoal(stopLauncherKineticState);
         }

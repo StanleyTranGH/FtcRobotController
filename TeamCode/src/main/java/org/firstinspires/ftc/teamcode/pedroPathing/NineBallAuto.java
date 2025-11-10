@@ -40,31 +40,32 @@ public class NineBallAuto extends OpMode {
     Servo launcherServo;
     Servo sorterServo;
     Servo leftGateServo;
-    final double launcherServoDown = 0.21;
+    final double launcherServoDown = 0.18;
     final double launcherServoUp = 0.49; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double sorterServoOpenLeft = 0.75; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.32; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double sorterServoOpenLeft = 0.67; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.36; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
-    final double openLeftGateServo = 0.38; //DONE: GET THE GATE OPEN VALUE
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1600; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1540;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1620;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1880; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1840;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1920;
+    final double openLeftGateServo = 0.44; //DONE: GET THE GATE OPEN VALUE
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 1860; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 1820;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 1880;
     final double STOP_SPEED = 0.0;
     final double MAX_FEED_TIME = 0.35;
-    final double MAX_WAITING_TIME = 0.8;
+    final double MAX_WAITING_TIME = 1.0;
+    final double MAX_SCAN_TIME = 2.0;
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     int shotCounter = 0;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.001);
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.0015);
     ControlSystem launcherController;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
     KineticState farTargetLauncherKineticState = new KineticState(0, FAR_LAUNCHER_TARGET_VELOCITY);
     KineticState currentLauncherKineticState = new KineticState(0, 0);
-    ;
+    // SIX SEVEN
 
     private enum LaunchState {
         IDLE,
@@ -98,8 +99,8 @@ public class NineBallAuto extends OpMode {
 
     private final Pose pickup2Pose = new Pose(100, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
     private final Pose collect2Pose = new Pose(127, 58, Math.toRadians(0)); // Collect second set of artifacts
-    private final Pose pickup3Pose = new Pose(100, 35, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
-    private final Pose collect3Pose = new Pose(127, 35, Math.toRadians(0)); // Collect third set of artifacts
+    private final Pose pickup3Pose = new Pose(102, 37, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
+    private final Pose collect3Pose = new Pose(127, 37, Math.toRadians(0)); // Collect third set of artifacts
     private final Pose collect4aPose = new Pose(132, 17, Math.toRadians(340)); // Collect the first of the fourth set of artifacts
     private final Pose collect4bPose = new Pose(132, 10, Math.toRadians(340)); // Collect the second of the fourth set of artifacts
     private final Pose collect4bControlPose = new Pose(128, 16, Math.toRadians(340)); // Control for collecting the 4b artifact
@@ -119,16 +120,16 @@ public class NineBallAuto extends OpMode {
             // DONE: CHANGE THIS POSE TO FAR SCAN
             scanPose = new Pose(88, 49, Math.toRadians(275)); // Scan Obelisk
             // TODO: CHANGE THIS POSE TO FAR SCORE
-            scorePose = new Pose(87, 18, Math.toRadians(248)); // Scoring Pose of our robot.
-            parkPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.
+            scorePose = new Pose(92.8, 13.6, Math.toRadians(-110.3)); // Scoring Pose of our robot.
+            parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
         } else if (startingPlace == 2) { // Close
             // DONE: CHANGE THIS START POSE TO CLOSE START
             startPose = new Pose(125, 120, Math.toRadians(217)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE SCAN
             scanPose = new Pose(88, 100, Math.toRadians(283)); // Scan Obelisk
-            scorePose = new Pose(92, 88, Math.toRadians(225)); // Scoring Pose of our robot.
+            scorePose = new Pose(87.5, 91, Math.toRadians(-141)); // Scoring Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE PARK
-            parkPose = new Pose(122, 95, Math.toRadians(90)); // Park Pose of our robot.
+            parkPose = new Pose(122, 95, Math.toRadians(270)); // Park Pose of our robot.
         }
 
         if (colorAlliance == 1) {
@@ -338,8 +339,9 @@ public class NineBallAuto extends OpMode {
                         motif = "PPG (Purple Purple Green)";
                     }
                 }
-                if (pathTimer.getElapsedTimeSeconds() > 5 && !follower.isBusy()) {
+                if (pathTimer.getElapsedTimeSeconds() > MAX_SCAN_TIME && !follower.isBusy()) {
                     obeliskID = 23;
+                    detectedID = obeliskID;
                     motif = "Couldn't Detect! Guessing PPG";
                 }
 
@@ -374,10 +376,14 @@ public class NineBallAuto extends OpMode {
 
                     if (shotCounter < 3) {
                         launch(true, false);
+                        if(shotCounter == 1) {
+                            leftGateServo.setPosition(openLeftGateServo);
+                        }
                     } else {
                         // TODO: Test if leaving wheel on is fine
                         // launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
+                        leftGateServo.setPosition(closeLeftGateServo);
                         follower.followPath(grabPickup1, true);
                         if (detectedID == 23) {
                             sorterServo.setPosition(sorterServoOpenRight);
@@ -399,23 +405,21 @@ public class NineBallAuto extends OpMode {
                     if (detectedID == 23) {
                         follower.followPath(collectPickup1, 0.5, true);
                     } else {
-                        follower.followPath(collectPickup1, 0.3, true); //TODO: FIND BEST SORTING PATH SPEED
+                        follower.followPath(collectPickup1, 0.25, true); //TODO: FIND BEST SORTING PATH SPEED
                     }
                     setPathState(3);
                 }
                 break;
             case 3:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if (follower.getPose().getX() > 108 && detectedID == 22) {
+                if (follower.getPose().getX() > 106 && detectedID == 22) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > 113 && detectedID == 21) {
+                if (follower.getPose().getX() > 112 && detectedID == 21) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
                 if (!follower.isBusy()) {
-                    if (detectedID == 21) {
-                        sorterServo.setPosition(sorterServoOpenLeft);
-                    }
+
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup1, true);
                     launcherController.setGoal(closeTargetLauncherKineticState);
@@ -432,16 +436,22 @@ public class NineBallAuto extends OpMode {
 
                     if (shotCounter == 0) {
                         launch(true, false);
-                    }
-                    if (shotCounter == 1) {
                         if (detectedID == 21) {
                             launch(true, true);
-                        } else {
+                            leftGateServo.setPosition(openLeftGateServo);
+                        }
+                    }
+                    if (shotCounter == 1) {
+                        if (detectedID == 22) {
+                            launch(true, true);
+                            leftGateServo.setPosition(openLeftGateServo);
+                        }  else {
                             launch(true, false);
                         }
                     } else if (shotCounter == 2) {
                         if (detectedID == 22) {
                             launch(true, true);
+                            leftGateServo.setPosition(openLeftGateServo);
                         } else {
                             launch(true, false);
                         }
@@ -471,24 +481,22 @@ public class NineBallAuto extends OpMode {
                     if (detectedID == 22) {
                         follower.followPath(collectPickup2, 0.5, true);
                     } else {
-                        follower.followPath(collectPickup2, 0.3, true); //TODO: FIND BEST SORTING PATH SPEED
+                        follower.followPath(collectPickup2, 0.25, true); //TODO: FIND BEST SORTING PATH SPEED
                     }
                     setPathState(6);
                 }
                 break;
             case 6:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if (follower.getPose().getX() > 108 && detectedID == 21) {
+                if (follower.getPose().getX() > 106 && detectedID == 21) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > 113 && detectedID == 23) {
+                if (follower.getPose().getX() > 112 && detectedID == 23) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
 
                 if (!follower.isBusy()) {
-                    if (detectedID == 23) {
-                        sorterServo.setPosition(sorterServoOpenLeft);
-                    }
+
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup2, true);
@@ -503,16 +511,22 @@ public class NineBallAuto extends OpMode {
                     /* DONE: SHOOT BALLS */
                     if (shotCounter == 0) {
                         launch(true, false);
-                    }
-                    if (shotCounter == 1) {
                         if (detectedID == 23) {
                             launch(true, true);
+                            leftGateServo.setPosition(openLeftGateServo);
+                        }
+                    }
+                    if (shotCounter == 1) {
+                        if (detectedID == 21) {
+                            launch(true, true);
+                            leftGateServo.setPosition(openLeftGateServo);
                         } else {
                             launch(true, false);
                         }
                     } else if (shotCounter == 2) {
                         if (detectedID == 21) {
                             launch(true, true);
+                            leftGateServo.setPosition(openLeftGateServo);
                         } else {
                             launch(true, false);
                         }
@@ -572,7 +586,7 @@ public class NineBallAuto extends OpMode {
                     if (detectedID == 21) {
                         follower.followPath(collectPickup3, 0.5, true);
                     } else {
-                        follower.followPath(collectPickup3, 0.3, true);
+                        follower.followPath(collectPickup3, 0.25, true);
                     }
                     setPathState(103);
                 }
@@ -580,17 +594,16 @@ public class NineBallAuto extends OpMode {
 
             case 103:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if (follower.getPose().getX() > 108 && detectedID == 23) {
+                if (follower.getPose().getX() > 106 && detectedID == 23) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > 113 && detectedID == 22) {
+                if (follower.getPose().getX() > 112 && detectedID == 22) {
                     sorterServo.setPosition(sorterServoOpenRight);
+
                 }
                 if (!follower.isBusy()) {
                     /* TODO: BALL SORTING */
-                    if (detectedID == 22) {
-                        sorterServo.setPosition(sorterServoOpenLeft);
-                    }
+
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup3, true);
@@ -607,18 +620,19 @@ public class NineBallAuto extends OpMode {
                     /* DONE: SHOOT BALLS */
                     if (shotCounter == 0) {
                         launch(true, false);
+                        if (detectedID == 22) {
+                            leftGateServo.setPosition(openLeftGateServo);
+                        }
                     }
                     if (shotCounter == 1) {
-                        if (detectedID == 22) {
+                        if (detectedID == 23) {
                             launch(true, true);
-                        } else {
-                            launch(true, false);
+                            leftGateServo.setPosition(openLeftGateServo);
                         }
                     } else if (shotCounter == 2) {
                         if (detectedID == 23) {
                             launch(true, true);
-                        } else {
-                            launch(true, false);
+                            leftGateServo.setPosition(openLeftGateServo);
                         }
                     }
                     if (shotCounter >= 3) {
@@ -626,27 +640,33 @@ public class NineBallAuto extends OpMode {
                         //launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
                         leftGateServo.setPosition(closeLeftGateServo);
-                        sorterServo.setPosition(sorterServoOpenRight);
+                        sorterServo.setPosition(sorterServoOpenLeft);
                         follower.followPath(collectPickup4, 0.5, true);
                         setPathState(105);
                     }
 
                 }
                 break;
-
-            case 105:
+            case 106:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
+                if (follower.getPose().getX() > 106 && detectedID == 21) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (follower.getPose().getX() > 112 && detectedID == 23) {
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
                 if (!follower.isBusy()) {
                     /* TODO: BALL SORTING */
+
 
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup4, true);
                     launcherController.setGoal(farTargetLauncherKineticState);
                     shotCounter = 0;
-                    setPathState(106);
+                    setPathState(107); //skip 106 cause why not
                 }
                 break;
-            case 106:
+            case 107:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (!follower.isBusy()) {
                     /* DONE: SHOOT BALLS */
@@ -656,11 +676,11 @@ public class NineBallAuto extends OpMode {
                         launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(park, true);
                         intakeMotor.setPower(STOP_SPEED);
-                        setPathState(107);
+                        setPathState(108);
                     }
                 }
                 break;
-            case 107:
+            case 108:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (!follower.isBusy()) {
                     setPathState(-1001);
@@ -674,6 +694,7 @@ public class NineBallAuto extends OpMode {
     /**
      * These change the states of the paths and actions. It will also reset the timers of the individual switches
      **/
+
     public void setPathState(int pState) {
         pathState = pState;
         pathTimer.resetTimer();
@@ -682,6 +703,7 @@ public class NineBallAuto extends OpMode {
     /**
      * This method is called once at the init of the OpMode.
      **/
+
     @Override
     public void init() {
         pathTimer = new Timer();
@@ -728,6 +750,7 @@ public class NineBallAuto extends OpMode {
     /**
      * This method is called continuously after Init while waiting for "play".
      **/
+
     @Override
     public void init_loop() {
         telemetry.addData("Status", "Initialized");
@@ -798,6 +821,7 @@ public class NineBallAuto extends OpMode {
      * This method is called once at the start of the OpMode.
      * It runs all the setup actions, including building paths and starting the path system
      **/
+
     @Override
     public void start() {
         opmodeTimer.resetTimer();
