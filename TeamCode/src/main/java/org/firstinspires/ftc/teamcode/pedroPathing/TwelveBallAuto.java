@@ -52,7 +52,7 @@ public class TwelveBallAuto extends OpMode{
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     int shotCounter = 0;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.001);
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.0015);
     ControlSystem launcherController;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);

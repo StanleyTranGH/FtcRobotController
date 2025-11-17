@@ -2,8 +2,6 @@ package org.firstinspires.ftc.teamcode.pedroPathing;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
-import com.arcrobotics.ftclib.hardware.motors.Motor;
-import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
@@ -13,22 +11,23 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.HeadingInterpolator;
 import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
+import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-import com.arcrobotics.ftclib.controller.PIDFController;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
@@ -68,6 +67,7 @@ public class MainTeleop extends OpMode {
     Servo launcherServo;
     Servo sorterServo;
     Servo leftGateServo;
+    Servo turretServo;
     ElapsedTime feederTimer = new ElapsedTime();
 
     final double launcherServoDown = 0.18;
@@ -83,6 +83,10 @@ public class MainTeleop extends OpMode {
     final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
     final double FAR_LAUNCHER_MIN_VELOCITY = 1760;
     final double FAR_LAUNCHER_MAX_VELOCITY = 1820;
+    final double turretRestPosition = 0.5;
+    double turretTargetPosition = 0.5;
+    boolean shootingMode = false;
+    boolean pedroMode = true; // True: Pedro Tracking False: Limelight Tracking
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -108,6 +112,7 @@ public class MainTeleop extends OpMode {
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
         sorterServo = hardwareMap.get(Servo.class, "sorterServo");
         leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
+        turretServo = hardwareMap.get(Servo.class, "turretServo");
 
 
         follower = Constants.createFollower(hardwareMap);
@@ -252,6 +257,8 @@ public class MainTeleop extends OpMode {
     public void start() {
         follower.setStartingPose(startingPose);
         follower.startTeleopDrive(true);
+
+        turretServo.setPosition(turretRestPosition);
     }
 
     @Override
@@ -370,6 +377,23 @@ public class MainTeleop extends OpMode {
 
         launch(gamepad2.rightBumperWasPressed());
 
+        // Turret
+
+        if(gamepad2.startWasPressed()) {
+            pedroMode = !pedroMode;
+        }
+
+        if(shootingMode) {
+            if(pedroMode) { // Pedro Tracking
+                turretTargetPosition = calculateTurretPositionPedro(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
+            } else { // Limelight Tracking
+                turretTargetPosition = calculateTurretPositionLimelight();
+            }
+            turretServo.setPosition(turretTargetPosition);
+        } else {
+            turretServo.setPosition(turretRestPosition);
+        }
+
         currentLauncherKineticState = new KineticState(launcher.getCurrentPosition(), launcher.getVelocity());
         launcher.setPower(launcherController.calculate(currentLauncherKineticState));
 
@@ -386,6 +410,62 @@ public class MainTeleop extends OpMode {
         telemetry.addData("Current Alliance", teleopColorAlliance);
         telemetry.addData("Starting Position", teleopStartingPlace);
 
+    }
+    double calculateTurretPositionPedro(double currentX, double currentY, double robotHeading) {
+
+        double goalX;
+        double goalY;
+
+        if(teleopColorAlliance == 1) { // Red
+            goalX = 133; // TODO: GET GOAL X AND Y VALUES
+            goalY = 137;
+        } else {
+            goalX = 11; // TODO: GET GOAL X AND Y VALUES
+            goalY = 137;
+        }
+
+        double dx = Math.abs(goalX - currentX); // X and Y offsets from the goal
+        double dy = Math.abs(goalY - currentY);
+
+        double targetAngle = Math.toDegrees(Math.atan2(dy, dx)); // Tangent to calculate angle
+        double relativeAngle = targetAngle - robotHeading; // Angle relative to where the robot is facing
+        relativeAngle = wrapDeg(relativeAngle); // Wrap it within the -180 to 180 degrees
+
+        double servoGearReduction = 4.0;
+        double servoDegrees = relativeAngle * servoGearReduction; // Degrees the servo needs to turn
+        double servoPositionChange = servoDegrees / 1800.0; // Reduce it within the 5 turn servo
+        double targetPosition = 0.5 + servoPositionChange; // Add 0.5 because 0.5 is starting position
+
+        return Range.clip(targetPosition, 0.0, 1.0); // Clip it in case of an error
+    }
+    double calculateTurretPositionLimelight() {
+        double hi = 0;
+        double detectedID = 0;
+        double tx = 0;
+        double ty = 0;
+        double ta = 0;
+        LLResult result = limelight.getLatestResult();
+
+        if (result != null && result.isValid()) {
+            // Valid target detected
+            List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+            for (LLResultTypes.FiducialResult fiducial : fiducials) {
+                detectedID = fiducial.getFiducialId();
+
+            }
+        }
+
+        if (detectedID == 20 && teleopColorAlliance == 2 || detectedID == 24 && teleopColorAlliance == 1) {
+
+        }
+
+        return hi;
+    }
+
+    double wrapDeg(double angle) {
+        while (angle > 180) angle -= 360;
+        while (angle < -180) angle += 360;
+        return angle;
     }
 
     void launch(boolean shotRequested) {
