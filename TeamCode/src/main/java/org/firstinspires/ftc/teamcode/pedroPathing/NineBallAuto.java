@@ -6,15 +6,13 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import  com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -29,6 +27,7 @@ import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 
+@Disabled
 @Autonomous(name = "Nine Ball Auto", group = "Official")
 public class NineBallAuto extends OpMode {
     private Follower follower;
@@ -861,11 +860,10 @@ public class NineBallAuto extends OpMode {
         telemetry.update();
     }
 
-    /**
-     * We do not use this because everything should automatically disable
-     **/
     @Override
     public void stop() {
+        follower.update();
+        autoToTeleop.endAuto = follower.getPose();
     }
 
     void launch(boolean shotRequested, boolean openGate) {

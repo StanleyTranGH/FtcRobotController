@@ -12,7 +12,6 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -26,24 +25,32 @@ import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 
-@Disabled
-@Autonomous(name = "B Twelve Ball Auto", group = "Official")
-public class TwelveBallAutoB extends OpMode {
+@Autonomous(name = "C Twelve Ball Auto", group = "Official")
+public class TwelveBallAutoC extends OpMode {
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
 
     private Limelight3A limelight;
     DcMotor intakeMotor;
-    DcMotorEx launcher;
+    DcMotorEx launcher1;
+    DcMotorEx launcher2;
     Servo launcherServo;
     Servo sorterServo;
     Servo leftGateServo;
+    Servo turretServo;
+    Servo hoodServo;
     final double launcherServoDown = 0.18;
     final double launcherServoUp = 0.49; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
     final double sorterServoOpenLeft = 0.67; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
     final double sorterServoOpenRight = 0.36; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
     final double openLeftGateServo = 0.44; //DONE: GET THE GATE OPEN VALUE
+
+    // Turret Positions
+
+    double turretScore, turretPreloadScore, turretScan;
+    final double turretRest = 0.5;
+
     final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
     final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
@@ -63,7 +70,6 @@ public class TwelveBallAutoB extends OpMode {
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
     KineticState farTargetLauncherKineticState = new KineticState(0, FAR_LAUNCHER_TARGET_VELOCITY);
     KineticState currentLauncherKineticState = new KineticState(0, 0);
-    ;
 
     private enum LaunchState {
         IDLE,
@@ -92,6 +98,7 @@ public class TwelveBallAutoB extends OpMode {
     private Pose startPose = new Pose(88, 8, Math.toRadians(270)); // Start Pose of our robot.
     private Pose scanPose = new Pose(88, 75, Math.toRadians(275)); // Scan Obelisk
     private Pose scorePose = new Pose(90, 90, Math.toRadians(225)); // Scoring Pose of our robot.
+    private Pose scorePreloadPose = new Pose(90, 90, Math.toRadians(217));
     private final Pose pickup1Pose = new Pose(101, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
     private final Pose openGatePose = new Pose(132, 76, Math.toRadians(0)); // Opens Gate.
@@ -116,20 +123,29 @@ public class TwelveBallAutoB extends OpMode {
     scorePreload.setConstantInterpolation(startPose.getHeading()); */
 
         if (startingPlace == 1) { // Far
-            startPose = new Pose(88, 8, Math.toRadians(270)); // Start Pose of our robot.
+            startPose = new Pose(88, 8, Math.toRadians(0)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO FAR SCAN
-            scanPose = new Pose(88, 49, Math.toRadians(275)); // Scan Obelisk
+            scanPose = new Pose(88, 49, Math.toRadians(0)); // Scan Obelisk
             // TODO: CHANGE THIS POSE TO FAR SCORE
-            scorePose = new Pose(92.8, 13.6, Math.toRadians(-110.3)); // Scoring Pose of our robot.
+            scorePose = new Pose(92.8, 13.6, Math.toRadians(0)); // Scoring Pose of our robot.
             parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
+            scorePreloadPose = scorePose;
+
+            turretScore = 0.36; // TODO: GET ACTUAL TURRET SCORE POSITION
+            turretScan = 0.3; // TODO: GET ACTUAL TURRET SCAN POSITION
         } else if (startingPlace == 2) { // Close
             // DONE: CHANGE THIS START POSE TO CLOSE START
             startPose = new Pose(125, 120, Math.toRadians(217)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE SCAN
-            scanPose = new Pose(88, 100, Math.toRadians(283)); // Scan Obelisk
-            scorePose = new Pose(87.5, 91, Math.toRadians(-141)); // Scoring Pose of our robot.
+            scanPose = new Pose(88, 100, Math.toRadians(217)); // Scan Obelisk
+            scorePose = new Pose(87.5, 91, Math.toRadians(0)); // Scoring Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE PARK
-            parkPose = new Pose(122, 95, Math.toRadians(270)); // Park Pose of our robot.
+            parkPose = new Pose(122, 95, Math.toRadians(0)); // Park Pose of our robot.
+            scorePreloadPose = new Pose(90, 90, Math.toRadians(217));
+
+            turretPreloadScore = 0.5;
+            turretScore = 0.35; // TODO: GET ACTUAL TURRET SCORE POSITION
+            turretScan = 0.3; // TODO: GET ACTUAL TURRET SCAN POSITION
         }
 
         if (colorAlliance == 1) {
@@ -139,8 +155,8 @@ public class TwelveBallAutoB extends OpMode {
                     .build();
 
             scorePreload = follower.pathBuilder()
-                    .addPath(new BezierLine(scanPose, scorePose))
-                    .setLinearHeadingInterpolation(scanPose.getHeading(), scorePose.getHeading())
+                    .addPath(new BezierLine(scanPose, scorePreloadPose))
+                    .setLinearHeadingInterpolation(scanPose.getHeading(), scorePreloadPose.getHeading())
                     .build();
 
             scorePreloadSkipScan = follower.pathBuilder()
@@ -229,14 +245,18 @@ public class TwelveBallAutoB extends OpMode {
                     .build();
         } else if (colorAlliance == 2) { // Mirrored poses for blue side
             startPose = startPose.mirror();
+            turretScan = 1 - turretScan;
+            turretScore = 1 - turretScore;
+            turretPreloadScore = 1 - turretPreloadScore;
+
             scanObelisk = follower.pathBuilder()
                     .addPath(new BezierLine(startPose, scanPose.mirror()))
                     .setLinearHeadingInterpolation(startPose.mirror().getHeading(), scanPose.mirror().getHeading())
                     .build();
 
             scorePreload = follower.pathBuilder()
-                    .addPath(new BezierLine(scanPose.mirror(), scorePose.mirror()))
-                    .setLinearHeadingInterpolation(scanPose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .addPath(new BezierLine(scanPose.mirror(), scorePreloadPose.mirror()))
+                    .setLinearHeadingInterpolation(scanPose.mirror().getHeading(), scorePreloadPose.mirror().getHeading())
                     .build();
 
             scorePreloadSkipScan = follower.pathBuilder()
@@ -338,6 +358,7 @@ public class TwelveBallAutoB extends OpMode {
                 } else {
                     launcherController.setGoal(farTargetLauncherKineticState);
                 }
+                turretServo.setPosition(turretScan);
                 follower.followPath(scanObelisk);
                 setPathState(12);
 
@@ -380,6 +401,7 @@ public class TwelveBallAutoB extends OpMode {
                         launcherController.setGoal(farTargetLauncherKineticState);
                     }
                     intakeMotor.setPower(INTAKING);
+                    turretServo.setPosition(turretPreloadScore);
                     setPathState(1);
                 }
                 break;
@@ -395,7 +417,6 @@ public class TwelveBallAutoB extends OpMode {
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (!follower.isBusy()) {
                     /* DONE: SHOOT PRELOAD BALLS */
-
                     if (shotCounter < 3) {
                         launch(true, false);
                         if(shotCounter == 1) {
@@ -406,6 +427,7 @@ public class TwelveBallAutoB extends OpMode {
                         // launcherController.setGoal(stopLauncherKineticState);
                         intakeMotor.setPower(INTAKING);
                         leftGateServo.setPosition(closeLeftGateServo);
+                        turretServo.setPosition(turretScore);
                         follower.followPath(grabPickup1, true);
                         if (detectedID == 23) {
                             sorterServo.setPosition(sorterServoOpenRight);
@@ -671,6 +693,7 @@ public class TwelveBallAutoB extends OpMode {
                         leftGateServo.setPosition(closeLeftGateServo);
                         sorterServo.setPosition(sorterServoOpenRight);
                         launcherController.setGoal(stopLauncherKineticState);
+                        turretServo.setPosition(turretRest);
                         follower.followPath(park, true);
                         setPathState(11);
                     }
@@ -715,23 +738,29 @@ public class TwelveBallAutoB extends OpMode {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
         intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-        launcher = hardwareMap.get(DcMotorEx.class, "launcher");
+        launcher1 = hardwareMap.get(DcMotorEx.class, "launcher1");
+        launcher2 = hardwareMap.get(DcMotorEx.class, "launcher2");
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
         sorterServo = hardwareMap.get(Servo.class, "sorterServo");
         leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
+        turretServo = hardwareMap.get(Servo.class, "turretServo");
+        hoodServo = hardwareMap.get(Servo.class, "hoodServo");
 
-        launcher.setZeroPowerBehavior(BRAKE);
+        launcher1.setZeroPowerBehavior(BRAKE);
+        launcher2.setZeroPowerBehavior(BRAKE);
 
         launcherController = ControlSystem.builder()
                 .velPid(launcherPIDCoefficients)
                 .build();
 
-        launcher.setPower(STOP_SPEED);
+        launcher1.setPower(STOP_SPEED);
+        launcher2.setPower(STOP_SPEED);
         launcherController.setGoal(stopLauncherKineticState);
 
         launcherServo.setPosition(launcherServoDown);
         sorterServo.setPosition(sorterServoOpenRight);
         leftGateServo.setPosition(closeLeftGateServo);
+        turretServo.setPosition(turretRest);
 
         // Ensure we're using pipeline 0
         limelight.pipelineSwitch(0);
@@ -826,6 +855,9 @@ public class TwelveBallAutoB extends OpMode {
             startingPlace = 2;
         }
 
+        autoToTeleop.colorAlliance = colorAlliance;
+        autoToTeleop.startingPosition = startingPlace;
+
         setPathState(0);
     }
 
@@ -840,8 +872,9 @@ public class TwelveBallAutoB extends OpMode {
         autonomousPathUpdate();
 
         // Calculate PID for launcher velocity based on goal (set earlier) and current velocity
-        currentLauncherKineticState = new KineticState(launcher.getCurrentPosition(), launcher.getVelocity());
-        launcher.setPower(launcherController.calculate(currentLauncherKineticState));
+        currentLauncherKineticState = new KineticState(launcher1.getCurrentPosition(), launcher1.getVelocity());
+        launcher1.setPower(launcherController.calculate(currentLauncherKineticState));
+        launcher2.setPower(launcherController.calculate(currentLauncherKineticState));
 
         // Feedback to Driver Hub for debugging
         telemetry.addData("Path State", pathState);
@@ -850,7 +883,7 @@ public class TwelveBallAutoB extends OpMode {
         telemetry.addData("Heading", follower.getPose().getHeading());
         telemetry.addData("Detected ID", detectedID);
         telemetry.addData("Detected Motif", motif);
-        telemetry.addData("Launcher Velocity", launcher.getVelocity());
+        telemetry.addData("Launcher Velocity", launcher1.getVelocity());
         telemetry.update();
     }
 
@@ -870,12 +903,12 @@ public class TwelveBallAutoB extends OpMode {
             case SPIN_UP:
                 if (startingPlace == 2) {
                     launcherController.setGoal(closeTargetLauncherKineticState);
-                    if (launcher.getVelocity() > CLOSE_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < CLOSE_LAUNCHER_MAX_VELOCITY) {
+                    if (launcher1.getVelocity() > CLOSE_LAUNCHER_MIN_VELOCITY && launcher1.getVelocity() < CLOSE_LAUNCHER_MAX_VELOCITY) {
                         launchState = LaunchState.LAUNCH;
                     }
                 } else if (startingPlace == 1) {
                     launcherController.setGoal(farTargetLauncherKineticState);
-                    if (launcher.getVelocity() > FAR_LAUNCHER_MIN_VELOCITY && launcher.getVelocity() < FAR_LAUNCHER_MAX_VELOCITY) {
+                    if (launcher1.getVelocity() > FAR_LAUNCHER_MIN_VELOCITY && launcher1.getVelocity() < FAR_LAUNCHER_MAX_VELOCITY) {
                         launchState = LaunchState.LAUNCH;
                     }
                 }
