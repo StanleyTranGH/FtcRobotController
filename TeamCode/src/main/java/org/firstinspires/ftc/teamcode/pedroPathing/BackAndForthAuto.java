@@ -59,7 +59,7 @@ public class BackAndForthAuto extends OpMode {
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     int shotCounter = 0;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.0015);
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.009, 0, 0.0009);
     ControlSystem launcherController;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -427,8 +427,7 @@ public class BackAndForthAuto extends OpMode {
         leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
         turretServo = hardwareMap.get(Servo.class, "turretServo");
 
-        launcher1.setZeroPowerBehavior(BRAKE);
-        launcher2.setZeroPowerBehavior(BRAKE);
+        launcher1.setDirection(DcMotorSimple.Direction.REVERSE);
 
         launcherController = ControlSystem.builder()
                 .velPid(launcherPIDCoefficients)

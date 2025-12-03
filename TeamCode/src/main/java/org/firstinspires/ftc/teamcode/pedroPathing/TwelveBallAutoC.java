@@ -64,7 +64,7 @@ public class TwelveBallAutoC extends OpMode {
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     int shotCounter = 0;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.0015);
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.009, 0, 0.0009);
     ControlSystem launcherController;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -460,8 +460,8 @@ public class TwelveBallAutoC extends OpMode {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
                 if (follower.getPose().getX() < 38 && detectedID == 22 && colorAlliance == 2) {
-                sorterServo.setPosition(sorterServoOpenRight);
-            }
+                    sorterServo.setPosition(sorterServoOpenRight);
+                }
                 if (follower.getPose().getX() > 112 && detectedID == 21 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
@@ -748,6 +748,7 @@ public class TwelveBallAutoC extends OpMode {
 
         launcher1.setZeroPowerBehavior(BRAKE);
         launcher2.setZeroPowerBehavior(BRAKE);
+        launcher1.setDirection(DcMotorSimple.Direction.REVERSE);
 
         launcherController = ControlSystem.builder()
                 .velPid(launcherPIDCoefficients)
@@ -778,7 +779,7 @@ public class TwelveBallAutoC extends OpMode {
     public void init_loop() {
         telemetry.addData("Status", "Initialized");
         if (lockedIn == false) {
-            telemetry.addLine("PLEASE REMEMBER TO LOCK IT IN!!! I'M TALKING TO YOU!!! LOCK ME IN!!!!!!");
+            telemetry.addLine("PLEASE REMEMBER TO LOCK IT IN!!! I HATE ______!!! uWu!!!!!! - stanley");
 
             telemetry.addLine("---------- PRESS RIGHT TRIGGER TO LOCK IN ----------");
             telemetry.addLine("Press A for Red and B for Blue");

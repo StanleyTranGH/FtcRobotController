@@ -21,7 +21,7 @@ import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 
-@Autonomous(name = "C Twelve Ball Auto", group = "Official")
+@Autonomous(name = "Leave Auto", group = "Official")
 public class LeaveAuto extends OpMode {
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;

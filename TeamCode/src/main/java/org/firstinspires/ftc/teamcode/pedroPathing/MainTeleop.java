@@ -55,7 +55,7 @@ public class MainTeleop extends OpMode {
     // Limelight fields
     private Limelight3A limelight;
     private int aimTagID;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.015, 0, 0.0015); // TODO: GET VALUES
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.009, 0, 0.0009); // TODO: GET VALUES
     ControlSystem launcherController;
 
     // Mechanisms
@@ -88,6 +88,7 @@ public class MainTeleop extends OpMode {
     final double hoodMinPosition = 0;
     final double hoodMaxPosition = 0.56; // DONE: GET THE REAL HOOD MAX POSITION
     double hoodTargetPosition = 0;
+    double robotDistanceFromGoal = 0;
     boolean shootingMode = false;
     int pedroMode = 1; // 1: Pedro + LL Tracking 2: Pedro Tracking 3: Limelight Tracking 4: No Tracking
     String pedroModeText = "Pedro + LL";
@@ -127,6 +128,8 @@ public class MainTeleop extends OpMode {
 
         launcher1.setZeroPowerBehavior(BRAKE);
         launcher2.setZeroPowerBehavior(BRAKE);
+        launcher1.setDirection(DcMotorSimple.Direction.REVERSE);
+
 
         launcherController = ControlSystem.builder()
                 .velPid(launcherPIDCoefficients)
@@ -434,6 +437,8 @@ public class MainTeleop extends OpMode {
             turretServo.setPosition(turretRestPosition);
         }
 
+        robotDistanceFromGoal = calculateDistance(follower.getPose().getX(), follower.getPose().getY());
+
         currentLauncherKineticState = new KineticState(launcher1.getCurrentPosition(), launcher1.getVelocity());
         launcher1.setPower(launcherController.calculate(currentLauncherKineticState));
         launcher2.setPower(launcherController.calculate(currentLauncherKineticState));
@@ -441,6 +446,7 @@ public class MainTeleop extends OpMode {
         telemetry.addLine("-------- PATHING --------");
         telemetry.addData("Position", follower.getPose());
         telemetry.addData("Automated Drive On?", automatedDrive);
+        telemetry.addData("Distance", robotDistanceFromGoal);
 
         telemetry.addLine("-------- LAUNCHER --------");
         telemetry.addData("Launch Range", launcherRange);
@@ -452,11 +458,23 @@ public class MainTeleop extends OpMode {
         telemetry.addData("Starting Position", teleopStartingPlace);
 
         telemetry.addLine("-------- TURRET --------");
-        telemetry.addData("Turret Servo Position", turretTargetPosition);
         telemetry.addData("Turret Current Position", turretServo.getPosition());
         telemetry.addData("Hood Servo Position", hoodTargetPosition);
         telemetry.addData("Tracking Mode", pedroModeText);
     }
+    double calculateDistance (double currentX, double currentY) {
+
+        double goalX = (teleopColorAlliance == 1) ? 133 : 11;
+        double goalY = 137;
+
+        double dx = goalX - currentX;
+        double dy = goalY - currentY;
+
+        double distance = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+
+        return distance;
+    }
+
     double calculateTurretPositionPedroLL (double currentX, double currentY, double robotHeadingDeg) {
 
         double targetPosition = 0.5; // Default position
