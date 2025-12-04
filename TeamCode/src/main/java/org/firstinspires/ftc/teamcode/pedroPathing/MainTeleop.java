@@ -591,13 +591,13 @@ public class MainTeleop extends OpMode {
         double targetDistance = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
 
         // Scale distance to the proper
-
+        double angle = Math.toRadians(Math.atan(2300+Math.sqrt(Math.pow(2300, 2)-(2)(9.8)(45)(2300) - (Math.pow(9.8, 2)(Math.pow(targetDistance, 2)))) / (9.8)(targetDistance))))+40;
         // Relative angle (-180 to 180)
 
         // Convert angle to servo position
+        double servoPosition = (angle-25) * 0.0224;
 
-
-        return 0;
+        return Range.clip(servoPosition);
     }
 
     void launch(boolean shotRequested) {
