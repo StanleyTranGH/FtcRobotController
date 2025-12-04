@@ -39,8 +39,8 @@ public class TwelveBallAutoC extends OpMode {
     Servo leftGateServo;
     Servo turretServo;
     Servo hoodServo;
-    final double launcherServoDown = 0.18;
-    final double launcherServoUp = 0.49; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double launcherServoDown = 0.40;
+    final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
     final double sorterServoOpenLeft = 0.67; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
     final double sorterServoOpenRight = 0.36; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE

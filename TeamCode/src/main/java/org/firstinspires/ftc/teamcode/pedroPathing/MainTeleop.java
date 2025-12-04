@@ -56,7 +56,7 @@ public class MainTeleop extends OpMode {
     private Limelight3A limelight;
     private int aimTagID;
     public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.0005, 0, 0.00005); // TODO: GET VALUES
-    public static double Feedforward = 1.00;
+    public static double launcherFF = 0.000359;
     ControlSystem launcherController;
 
     // Mechanisms
@@ -70,8 +70,8 @@ public class MainTeleop extends OpMode {
     Servo hoodServo;
     ElapsedTime feederTimer = new ElapsedTime();
 
-    final double launcherServoDown = 0.18;
-    final double launcherServoUp = 0.49; // TODO: SET THESE VALUES TO PROPER SERVO POSITION
+    final double launcherServoDown = 0.4;
+    final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
     final double sorterServoOpenLeft = 0.67; //TODO: SET THIS VALUE TO OPEN THE LEFT SIDE
     final double sorterServoOpenRight = 0.36; //TODO: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeGateServo = 0.5; // TODO: GET GATE SERVO VALUES
@@ -133,7 +133,7 @@ public class MainTeleop extends OpMode {
 
         launcherController = ControlSystem.builder()
                 .velPid(launcherPIDCoefficients)
-                .basicFF(Feedforward)
+                .basicFF(launcherFF)
                 .build();
 
         launcher1.setPower(STOP_SPEED);
@@ -418,7 +418,7 @@ public class MainTeleop extends OpMode {
             if(pedroMode == 1) {
 
                 turretTargetPosition = calculateTurretPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
-                hoodTargetPosition = calculateHoodPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
+                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY());
 
             } else if(pedroMode == 2) { // Pedro Tracking
 
