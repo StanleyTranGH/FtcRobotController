@@ -187,7 +187,7 @@ public class LeaveAuto extends OpMode {
         launcher2 = hardwareMap.get(DcMotorEx.class, "launcher2");
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
         sorterServo = hardwareMap.get(Servo.class, "sorterServo");
-        leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
+        leftGateServo = hardwareMap.get(Servo.class, "gateServo");
         turretServo = hardwareMap.get(Servo.class, "turretServo");
 
         launcher1.setZeroPowerBehavior(BRAKE);

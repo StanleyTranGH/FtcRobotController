@@ -55,8 +55,8 @@ public class MainTeleop extends OpMode {
     // Limelight fields
     private Limelight3A limelight;
     private int aimTagID;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.0005, 0, 0.00005); // TODO: GET VALUES
-    public static double launcherFF = 0.000359;
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.006, 0, 0.0006); // TODO: GET VALUES
+    public static double launcherFF = 0.0003;
     ControlSystem launcherController;
 
     // Mechanisms
@@ -78,12 +78,13 @@ public class MainTeleop extends OpMode {
     final double openLeftSideGateServo = 0.7;
     final double openRightSideGateServo = 0.3;
     String launcherRange = "CLOSE"; // CLOSE or FAR
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // TODO: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1600;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1680; // TODO: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1620;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1700;
     final double FAR_LAUNCHER_TARGET_VELOCITY = 1800; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
     final double FAR_LAUNCHER_MIN_VELOCITY = 1760;
     final double FAR_LAUNCHER_MAX_VELOCITY = 1820;
+    double TARGET_VELOCITY = 0;
     final double turretRestPosition = 0.5;
     double turretTargetPosition = 0.5;
     final double hoodMinPosition = 0;
@@ -98,6 +99,7 @@ public class MainTeleop extends OpMode {
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
     KineticState farTargetLauncherKineticState = new KineticState(0, FAR_LAUNCHER_TARGET_VELOCITY);
     KineticState currentLauncherKineticState = new KineticState(0, 0);
+    KineticState targetLauncherKineticState = stopLauncherKineticState;
 
     final double MAX_FEED_TIME = 0.35;
     final double MAX_SCAN_TIME = 2.0;
@@ -363,6 +365,7 @@ public class MainTeleop extends OpMode {
         }
 
         // Launching
+        /* TODO: REMOVE IF THE LINEAR VELOCITY SCALING WORKS
         if (gamepad2.yWasPressed()) {
             shootingMode = true;
             launcherRange = "CLOSE";
@@ -373,6 +376,18 @@ public class MainTeleop extends OpMode {
             launcherRange = "FAR";
             launcherController.setGoal(farTargetLauncherKineticState);
             scorePose = new Pose(92.8, 13.6, Math.toRadians(-110.3)); // Scoring Pose of our robot.
+        } else if (gamepad2.bWasPressed()) { // stop flywheel
+            shootingMode = false;
+            launcherController.setGoal(stopLauncherKineticState);
+
+       }
+       */
+
+        if (gamepad2.yWasPressed()) {
+            shootingMode = true;
+            TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY());
+            targetLauncherKineticState = new KineticState(0, TARGET_VELOCITY);
+            launcherController.setGoal(targetLauncherKineticState);
         } else if (gamepad2.bWasPressed()) { // stop flywheel
             shootingMode = false;
             launcherController.setGoal(stopLauncherKineticState);
@@ -423,7 +438,7 @@ public class MainTeleop extends OpMode {
             } else if(pedroMode == 2) { // Pedro Tracking
 
                 turretTargetPosition = calculateTurretPositionPedro(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
-                // hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY());
+                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY());
 
             } else if (pedroMode == 3) { // Limelight Tracking
                 turretTargetPosition = calculateTurretPositionLimelight();
@@ -440,8 +455,12 @@ public class MainTeleop extends OpMode {
         }
 
         currentLauncherKineticState = new KineticState(launcher1.getCurrentPosition(), launcher1.getVelocity());
-        launcher1.setPower(launcherController.calculate(currentLauncherKineticState));
-        launcher2.setPower(launcherController.calculate(currentLauncherKineticState));
+
+        double launcherPower = launcherController.calculate(currentLauncherKineticState);
+        launcher1.setPower(launcherPower);
+        launcher2.setPower(launcherPower);
+
+        robotDistanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY());
 
         telemetry.addLine("-------- PATHING --------");
         telemetry.addData("Position", follower.getPose());
@@ -449,7 +468,8 @@ public class MainTeleop extends OpMode {
         telemetry.addData("Distance", robotDistanceFromGoal);
 
         telemetry.addLine("-------- LAUNCHER --------");
-        telemetry.addData("Launch Range", launcherRange);
+        // TODO: REMOVE IF LAUNCHER VELOCITY SCALING WORKS
+        // telemetry.addData("Launch Range", launcherRange);
         telemetry.addData("Launch State", launchState);
         telemetry.addData("Launcher Velocity", launcher1.getVelocity());
         telemetry.addData("Launcher Power", launcher1.getPower());
@@ -463,7 +483,23 @@ public class MainTeleop extends OpMode {
         telemetry.addData("Hood Servo Position", hoodTargetPosition);
         telemetry.addData("Tracking Mode", pedroModeText);
     }
+    double calculateRobotDistanceFromGoal (double currentX, double currentY) {
+        double goalX = (teleopColorAlliance == 1) ? 142 : 2;
+        double goalY = 142;
 
+        double dx = currentX - goalX;
+        double dy = currentY - goalY;
+        double distance = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+
+        return distance;
+    }
+    double calculateVelocity (double currentX, double currentY) {
+        double goalDistance = calculateRobotDistanceFromGoal(currentX, currentY);
+
+        double targetVelocity = 0;
+
+        return targetVelocity;
+    }
     double calculateTurretPositionPedroLL (double currentX, double currentY, double robotHeadingDeg) {
 
         double targetPosition = 0.5; // Default position
@@ -521,8 +557,8 @@ public class MainTeleop extends OpMode {
     double calculateTurretPositionPedro(double currentX, double currentY, double robotHeadingDeg) {
 
         // TODO: FIND BEST GOAL COORDINATES
-        double goalX = (teleopColorAlliance == 1) ? 133 : 11;
-        double goalY = 137;
+        double goalX = (teleopColorAlliance == 1) ? 142 : 2;
+        double goalY = 142;
 
         // Angle to goal
         double dx = goalX - currentX;
@@ -578,26 +614,18 @@ public class MainTeleop extends OpMode {
         }
 
         return Range.clip(targetPosition, 0.0, 1.0);
-    }
+    } 
 
     double calculateHoodPositionPedro(double currentX, double currentY) {
-        // TODO: FIND BEST GOAL COORDINATES
-        double goalX = (teleopColorAlliance == 1) ? 133 : 11;
-        double goalY = 137;
 
-        // Distance From Goal (just pythagorean theorem)
-        double dx = goalX - currentX;
-        double dy = goalY - currentY;
-        double targetDistance = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+        double targetDistance = calculateRobotDistanceFromGoal(currentX, currentY);
 
         // Scale distance to the proper
-        double angle = Math.toRadians(Math.atan(2300+Math.sqrt(Math.pow(2300, 2)-(2)(9.8)(45)(2300) - (Math.pow(9.8, 2)(Math.pow(targetDistance, 2)))) / (9.8)(targetDistance))))+40;
+        double servoPosition = -5.339981 + 0.3090759*targetDistance - 0.00610722*Math.pow(targetDistance, 2) + 0.00004666887*Math.pow(targetDistance, 3) - 1.405935 * Math.pow(10, -8) *Math.pow(targetDistance, 4) - 9.799439 * Math.pow(10, -10) * Math.pow(targetDistance, 5);
+
         // Relative angle (-180 to 180)
 
-        // Convert angle to servo position
-        double servoPosition = (angle-25) * 0.0224;
-
-        return Range.clip(servoPosition);
+        return Range.clip(servoPosition, 0.00, 0.56);
     }
 
     void launch(boolean shotRequested) {
