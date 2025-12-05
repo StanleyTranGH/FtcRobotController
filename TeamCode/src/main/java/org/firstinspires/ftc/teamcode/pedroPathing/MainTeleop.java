@@ -385,7 +385,7 @@ public class MainTeleop extends OpMode {
 
         if (gamepad2.yWasPressed()) {
             shootingMode = true;
-            TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY());
+            TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
             targetLauncherKineticState = new KineticState(0, TARGET_VELOCITY);
             launcherController.setGoal(targetLauncherKineticState);
         } else if (gamepad2.bWasPressed()) { // stop flywheel
@@ -433,12 +433,12 @@ public class MainTeleop extends OpMode {
             if(pedroMode == 1) {
 
                 turretTargetPosition = calculateTurretPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
-                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY());
+                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
 
             } else if(pedroMode == 2) { // Pedro Tracking
 
                 turretTargetPosition = calculateTurretPositionPedro(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
-                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY());
+                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
 
             } else if (pedroMode == 3) { // Limelight Tracking
                 turretTargetPosition = calculateTurretPositionLimelight();
@@ -460,7 +460,7 @@ public class MainTeleop extends OpMode {
         launcher1.setPower(launcherPower);
         launcher2.setPower(launcherPower);
 
-        robotDistanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY());
+        robotDistanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY(), follower.getPose().getHeading());
 
         telemetry.addLine("-------- PATHING --------");
         telemetry.addData("Position", follower.getPose());
@@ -483,18 +483,30 @@ public class MainTeleop extends OpMode {
         telemetry.addData("Hood Servo Position", hoodTargetPosition);
         telemetry.addData("Tracking Mode", pedroModeText);
     }
-    double calculateRobotDistanceFromGoal (double currentX, double currentY) {
+    double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingDeg) {
+        // Goal coordinates
         double goalX = (teleopColorAlliance == 1) ? 142 : 2;
         double goalY = 142;
 
-        double dx = currentX - goalX;
-        double dy = currentY - goalY;
-        double distance = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+        // Shooter offset relative to robot center
+        double shooterOffset = -2.0; // 2 inches BEHIND robot center (negative = behind)
 
-        return distance;
+        // Convert heading to radians
+        double headingRad = Math.toRadians(headingDeg);
+
+        // Compute shooter position using rotation
+        double shooterX = currentX + shooterOffset * Math.cos(headingRad);
+        double shooterY = currentY + shooterOffset * Math.sin(headingRad);
+
+        // Compute distance from shooter to goal
+        double dx = shooterX - goalX;
+        double dy = shooterY - goalY;
+
+        return Math.sqrt(dx * dx + dy * dy);
     }
-    double calculateVelocity (double currentX, double currentY) {
-        double goalDistance = calculateRobotDistanceFromGoal(currentX, currentY);
+
+    double calculateVelocity (double currentX, double currentY, double headingDeg) {
+        double goalDistance = calculateRobotDistanceFromGoal(currentX, currentY, headingDeg);
 
         double targetVelocity = 0;
 
@@ -544,11 +556,11 @@ public class MainTeleop extends OpMode {
 
         if((detectedID == 24 && teleopColorAlliance == 1) || (detectedID == 20 && teleopColorAlliance == 2)) {
 
-            targetPosition = calculateHoodPositionPedro(currentX, currentY);
+            targetPosition = calculateHoodPositionPedro(currentX, currentY, robotHeadingDeg);
 
         } else {
 
-            targetPosition = calculateHoodPositionPedro(currentX, currentY);
+            targetPosition = calculateHoodPositionPedro(currentX, currentY, robotHeadingDeg);
 
         }
 
@@ -560,12 +572,19 @@ public class MainTeleop extends OpMode {
         double goalX = (teleopColorAlliance == 1) ? 142 : 2;
         double goalY = 142;
 
+        double shooterOffset = 2.0;
+        double headingRad = Math.toRadians(robotHeadingDeg);
+
+        double shooterX = currentX - shooterOffset * Math.cos(headingRad);
+        double shooterY = currentY - shooterOffset * Math.sin(headingRad);
+
         // Angle to goal
-        double dx = goalX - currentX;
-        double dy = goalY - currentY;
+        double dx = goalX - shooterX;
+        double dy = goalY - shooterY;
         double targetAngleDeg = Math.toDegrees(Math.atan2(dy, dx));
 
         // Relative angle (-180 to 180)
+
         double relativeAngle = targetAngleDeg - robotHeadingDeg;
         relativeAngle = wrapTo180(relativeAngle);
         relativeAngle *= -1;
@@ -574,9 +593,9 @@ public class MainTeleop extends OpMode {
         //  -180° -> 0.06
         //   0°   -> 0.50
         //  +180° -> 0.94
-        double servoMin = 0.06;
+        double servoMin = 0.14;
         double servoMid = 0.50;
-        double servoMax = 0.94;
+        double servoMax = 0.86;
 
         double servoRange = servoMax - servoMin;
 
@@ -616,9 +635,9 @@ public class MainTeleop extends OpMode {
         return Range.clip(targetPosition, 0.0, 1.0);
     } 
 
-    double calculateHoodPositionPedro(double currentX, double currentY) {
+    double calculateHoodPositionPedro(double currentX, double currentY, double headingDeg) {
 
-        double targetDistance = calculateRobotDistanceFromGoal(currentX, currentY);
+        double targetDistance = calculateRobotDistanceFromGoal(currentX, currentY, headingDeg);
 
         // Scale distance to the proper
         double servoPosition = -5.339981 + 0.3090759*targetDistance - 0.00610722*Math.pow(targetDistance, 2) + 0.00004666887*Math.pow(targetDistance, 3) - 1.405935 * Math.pow(10, -8) *Math.pow(targetDistance, 4) - 9.799439 * Math.pow(10, -10) * Math.pow(targetDistance, 5);
