@@ -34,12 +34,12 @@ public class LeaveAuto extends OpMode {
     Servo sorterServo;
     Servo leftGateServo;
     Servo turretServo;
-    final double launcherServoDown = 0.18;
-    final double launcherServoUp = 0.49; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double sorterServoOpenLeft = 0.67; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.36; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
-    final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
-    final double openLeftGateServo = 0.44; //DONE: GET THE GATE OPEN VALUE
+    final double launcherServoDown = 0.4;
+    final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double sorterServoOpenLeft = 0.72; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.37; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double closeGateServo = 0.5; // DONE: GET GATE SERVO VALUES
+    final double openGateServo = 0.64;
 
     // Turret Positions
 
@@ -100,9 +100,9 @@ public class LeaveAuto extends OpMode {
     scorePreload.setConstantInterpolation(startPose.getHeading()); */
 
         if (startingPlace == 1) { // Far
-            startPose = new Pose(88, 8, Math.toRadians(0)); // Start Pose of our robot.
+            startPose = new Pose(88, 8, Math.toRadians(90)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO FAR SCAN
-            parkPose = new Pose(130, 11, Math.toRadians(0)); // Park Pose of our robot.
+            parkPose = new Pose(130, 11, Math.toRadians(90)); // Park Pose of our robot.
 
         } else if (startingPlace == 2) { // Close
             // DONE: CHANGE THIS START POSE TO CLOSE START
@@ -203,7 +203,7 @@ public class LeaveAuto extends OpMode {
 
         launcherServo.setPosition(launcherServoDown);
         sorterServo.setPosition(sorterServoOpenRight);
-        leftGateServo.setPosition(closeLeftGateServo);
+        leftGateServo.setPosition(closeGateServo);
         turretServo.setPosition(turretRest);
 
         // Ensure we're using pipeline 0

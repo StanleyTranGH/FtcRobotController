@@ -34,11 +34,11 @@ public class BackAndForthAuto extends OpMode {
     Servo sorterServo;
     Servo leftGateServo;
     Servo turretServo;
+    Servo hoodServo;
     final double launcherServoDown = 0.40;
     final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double sorterServoOpenLeft = 0.67; //DONE: SET THIS VALUE
-    // TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.36; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double sorterServoOpenLeft = 0.72; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.37; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
     final double openLeftGateServo = 0.44; //DONE: GET THE GATE OPEN VALUE
 
@@ -53,14 +53,17 @@ public class BackAndForthAuto extends OpMode {
     final double FAR_LAUNCHER_TARGET_VELOCITY = 1880; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
     final double FAR_LAUNCHER_MIN_VELOCITY = 1840;
     final double FAR_LAUNCHER_MAX_VELOCITY = 1920;
+    final double hoodRest = 0;
+    final double hoodScore = 0.4; // TODO: FIND DESIRED HOOD POSITION
     final double STOP_SPEED = 0.0;
     final double MAX_FEED_TIME = 0.22;
-    final double MAX_WAITING_TIME = 0.6;
+    final double MAX_WAITING_TIME = 0.75;
+    final double HOLD_MAX_WAITING_TIME = 0.9;
     final double MAX_SCAN_TIME = 2.0;
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     int shotCounter = 0;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.009, 0, 0.0009);
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.006, 0, 0.0006);
     ControlSystem launcherController;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -335,7 +338,6 @@ public class BackAndForthAuto extends OpMode {
                     .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), parkPose.mirror().getHeading())
                     .build();
         }
-
     }
 
     public void autonomousPathUpdate() {
@@ -345,6 +347,7 @@ public class BackAndForthAuto extends OpMode {
                 intakeMotor.setPower(INTAKING);
                 launcherController.setGoal(closeTargetLauncherKineticState);
                 turretServo.setPosition(turretScore);
+                hoodServo.setPosition(hoodScore);
                 follower.followPath(scorePreload);
                 sorterServo.setPosition(sorterServoOpenRight);
                 setPathState(1);
@@ -425,8 +428,9 @@ public class BackAndForthAuto extends OpMode {
         launcher2 = hardwareMap.get(DcMotorEx.class, "launcher2");
         launcherServo = hardwareMap.get(Servo.class, "launcherServo");
         sorterServo = hardwareMap.get(Servo.class, "sorterServo");
-        leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
+        leftGateServo = hardwareMap.get(Servo.class, "gateServo");
         turretServo = hardwareMap.get(Servo.class, "turretServo");
+        hoodServo = hardwareMap.get(Servo.class, "hoodServo");
 
         launcher1.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -437,11 +441,15 @@ public class BackAndForthAuto extends OpMode {
         launcher1.setPower(STOP_SPEED);
         launcher2.setPower(STOP_SPEED);
         launcherController.setGoal(stopLauncherKineticState);
+        intakeMotor.setZeroPowerBehavior(BRAKE);
+        launcher1.setZeroPowerBehavior(BRAKE);
+        launcher2.setZeroPowerBehavior(BRAKE);
 
         launcherServo.setPosition(launcherServoDown);
         sorterServo.setPosition(sorterServoOpenRight);
         leftGateServo.setPosition(closeLeftGateServo);
         turretServo.setPosition(turretRest);
+        hoodServo.setPosition(hoodRest);
 
         // Ensure we're using pipeline 0
         limelight.pipelineSwitch(0);
@@ -616,7 +624,13 @@ public class BackAndForthAuto extends OpMode {
                     shotCounter++;
                     feederTimer.reset();
                     launchState = LaunchState.IDLE;
-                } else if (feederTimer.seconds() > MAX_WAITING_TIME) {
+                }  else if (openGate) {
+                    if (feederTimer.seconds() > HOLD_MAX_WAITING_TIME) {
+                        shotCounter++;
+                        feederTimer.reset();
+                        launchState = LaunchState.IDLE;
+                    }
+                }else if (feederTimer.seconds() > MAX_WAITING_TIME) {
                     shotCounter++;
                     feederTimer.reset();
                     launchState = LaunchState.IDLE;
