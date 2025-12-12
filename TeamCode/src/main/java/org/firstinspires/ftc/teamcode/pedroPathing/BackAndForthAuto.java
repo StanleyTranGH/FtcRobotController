@@ -36,7 +36,7 @@ public class BackAndForthAuto extends OpMode {
     Servo turretServo;
     Servo hoodServo;
     final double launcherServoDown = 0.40;
-    final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double launcherServoUp = 0.17; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
     final double sorterServoOpenLeft = 0.72; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
     final double sorterServoOpenRight = 0.37; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeLeftGateServo = 0.73; // DONE: GET THE GATE CLOSE VALUE
@@ -50,11 +50,11 @@ public class BackAndForthAuto extends OpMode {
     final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
     final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1880; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1840;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1920;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 2250; // DONE: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 2200;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 2280;
     final double hoodRest = 0;
-    final double hoodScore = 0.4; // TODO: FIND DESIRED HOOD POSITION
+    double hoodScore = 0.4; // TODO: FIND DESIRED HOOD POSITION
     final double STOP_SPEED = 0.0;
     final double MAX_FEED_TIME = 0.22;
     final double MAX_WAITING_TIME = 0.75;
@@ -126,14 +126,16 @@ public class BackAndForthAuto extends OpMode {
             startPose = new Pose(88, 8, Math.toRadians(0)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO FAR SCAN
             scanPose = new Pose(88, 49, Math.toRadians(0)); // Scan Obelisk
-            // TODO: CHANGE THIS POSE TO FAR SCORE
-            scorePose = new Pose(92.8, 13.6, Math.toRadians(0)); // Scoring Pose of our robot.
-            parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
+            // DONE: CHANGE THIS POSE TO FAR SCORE
+            scorePose = new Pose(93, 14, Math.toRadians(0)); // Scoring Pose of our robot.
+            parkPose = new Pose(120, 12, Math.toRadians(270)); // Park Pose of our robot.
             scorePreloadPose = scorePose;
-
-            turretScore = 0.36; // TODO: GET ACTUAL TURRET SCORE POSITION
-            turretScan = 0.3; // TODO: GET ACTUAL TURRET SCAN POSITION
+            turretScore = 0.325; // DONE: GET ACTUAL TURRET SCORE POSITION
+            turretScan = 0.325; // DONE: GET ACTUAL TURRET SCAN POSITION
+            hoodScore = 0.22;
         } else if (startingPlace == 2) { // Close
+            // NONE OF THIS STUFF MATTERS
+
             // DONE: CHANGE THIS START POSE TO CLOSE START
             startPose = new Pose(125, 120, Math.toRadians(217)); // Start Pose of our robot.
             // DONE: CHANGE THIS POSE TO CLOSE SCAN
@@ -150,7 +152,7 @@ public class BackAndForthAuto extends OpMode {
 
         if (colorAlliance == 1) {
 
-            scorePreloadSkipScan = follower.pathBuilder()
+            scorePreload = follower.pathBuilder()
                     .addPath(new BezierLine(startPose, scorePreloadPose))
                     .setLinearHeadingInterpolation(startPose.getHeading(), scorePreloadPose.getHeading())
                     .build();
@@ -345,7 +347,7 @@ public class BackAndForthAuto extends OpMode {
             case 0:
                 shotCounter = 0;
                 intakeMotor.setPower(INTAKING);
-                launcherController.setGoal(closeTargetLauncherKineticState);
+                launcherController.setGoal(farTargetLauncherKineticState);
                 turretServo.setPosition(turretScore);
                 hoodServo.setPosition(hoodScore);
                 follower.followPath(scorePreload);
@@ -362,6 +364,7 @@ public class BackAndForthAuto extends OpMode {
                     if (shotCounter >= 3) {
                         follower.followPath(grabLoadingZone, true);
                         intakeMotor.setPower(INTAKING);
+                        shotCounter = 0;
                         setPathState(2);
                     }
                 }
@@ -373,7 +376,7 @@ public class BackAndForthAuto extends OpMode {
                 }
                 break;
             case 3:
-                if(pathTimer.getElapsedTimeSeconds() > 5) {
+                if(pathTimer.getElapsedTimeSeconds() > 2) {
                     intakeMotor.setPower(STOP_SPEED);
                     follower.followPath(scoreLoadingZone, true);
                     setPathState(1);
@@ -442,6 +445,7 @@ public class BackAndForthAuto extends OpMode {
         launcher2.setPower(STOP_SPEED);
         launcherController.setGoal(stopLauncherKineticState);
         intakeMotor.setZeroPowerBehavior(BRAKE);
+        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         launcher1.setZeroPowerBehavior(BRAKE);
         launcher2.setZeroPowerBehavior(BRAKE);
 
@@ -576,6 +580,8 @@ public class BackAndForthAuto extends OpMode {
         telemetry.addData("Detected ID", detectedID);
         telemetry.addData("Detected Motif", motif);
         telemetry.addData("Launcher Velocity", launcher1.getVelocity());
+        telemetry.addData("Shot Counter", shotCounter);
+        telemetry.addData("Launch State", launchState);
         telemetry.update();
     }
 

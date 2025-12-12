@@ -13,7 +13,6 @@ import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
@@ -28,10 +27,10 @@ import dev.nextftc.control.feedback.PIDCoefficients;
 @Autonomous(name = "C Twelve Ball Auto", group = "Official")
 public class TwelveBallAutoC extends OpMode {
     private Follower follower;
-    private Timer pathTimer, actionTimer, opmodeTimer;
+    private Timer pathTimer, opmodeTimer;
 
     private Limelight3A limelight;
-    DcMotor intakeMotor;
+    DcMotorEx intakeMotor;
     DcMotorEx launcher1;
     DcMotorEx launcher2;
     Servo launcherServo;
@@ -40,9 +39,9 @@ public class TwelveBallAutoC extends OpMode {
     Servo turretServo;
     Servo hoodServo;
     final double launcherServoDown = 0.4;
-    final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double sorterServoOpenLeft = 0.72; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.37; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double launcherServoUp = 0.17; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double sorterServoOpenLeft = 0.70; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.3; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeGateServo = 0.5; // DONE: GET GATE SERVO VALUES
     final double openGateServo = 0.64;
 
@@ -50,24 +49,32 @@ public class TwelveBallAutoC extends OpMode {
 
     double turretScore, turretPreloadScore, turretScan;
     final double turretRest = 0.5;
-
+    final double SLOW_INTAKE = 0.3;
     final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
     final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 1880; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 1840;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 1920;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 2250; // DONE: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 2200;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 2280;
     final double hoodRest = 0;
-    double hoodScore = 0.3; // TODO: FIND DESIRED HOOD ANGLES
+    double hoodScore = 0.3; // DONE: FIND DESIRED HOOD ANGLES
     final double STOP_SPEED = 0.0;
-    final double WEAK_SPEED = 0.0;
-    final double MAX_FEED_TIME = 0.22;
+    final double WEAK_SPEED = 0.5;
+    final double MAX_FEED_TIME = 0.23;
     final double MAX_WAITING_TIME = 0.75;
-    final double HOLD_MAX_WAITING_TIME = 0.9;
-    final double MAX_SCAN_TIME = 0.0; // TODO: CHANGE BACK TO 2.0 WHEN LIMELIGHT IS ATTACHED
+    final double HOLD_MAX_WAITING_TIME = 0.85;
+    final double MAX_SCAN_TIME = 1.0;
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
+    boolean wasDetect = false;
+    boolean isDetect = false;
     int shotCounter = 0;
+    final double firstBallXRed = 106.3;
+    final double secondBallXRed = 109.5;
+    final double thirdBallXRed = 113.7;
+    final double firstBallXBlue = 144 - firstBallXRed;
+    final double secondBallXBlue = 144 - secondBallXRed;
+    final double thirdBallXBlue = 144 - thirdBallXRed;
     public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.006, 0, 0.0006); // DONE: GET VALUES
     public static double launcherFF = 0.0003;
     ControlSystem launcherController;
@@ -86,6 +93,8 @@ public class TwelveBallAutoC extends OpMode {
 
     private LaunchState launchState;
     ElapsedTime feederTimer = new ElapsedTime();
+    ElapsedTime intakeTimer = new ElapsedTime();
+    ElapsedTime actionTimer = new ElapsedTime();
     ElapsedTime gateTimer = new ElapsedTime();
     String motif = "Not Detected Yet";
     int detectedID;
@@ -106,13 +115,16 @@ public class TwelveBallAutoC extends OpMode {
     private Pose scorePreloadPose = new Pose(90, 90, Math.toRadians(217));
     private final Pose pickup1Pose = new Pose(101, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
-    private final Pose openGatePose = new Pose(132, 76, Math.toRadians(0)); // Opens Gate.
-    private final Pose openGateControlPose = new Pose(116, 77, Math.toRadians(0)); // Control pose for Scoring 1 while avoiding Artifacts 2
+    private final Pose altCollect1Pose = new Pose(120, 84, Math.toRadians(0)); // Collect first set of artifacts but it's shorter
+    private final Pose openGatePose = new Pose(132, 71, Math.toRadians(0)); // Opens Gate.
+    private final Pose openGateControlPose = new Pose(116, 75, Math.toRadians(0)); // Control pose for Scoring 1 while avoiding Artifacts 2
     private final Pose score1ControlPose = new Pose(81, 83, Math.toRadians(90)); // Control pose to open Gate
     private final Pose pickup2Pose = new Pose(101, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
     private final Pose collect2Pose = new Pose(127, 58, Math.toRadians(0)); // Collect second set of artifacts
+    private final Pose altCollect2Pose = new Pose(123, 58, Math.toRadians(0)); // Collect second set of artifacts but it's shorter
     private final Pose pickup3Pose = new Pose(101, 37, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(127, 37, Math.toRadians(0)); // Collect third set of artifacts
+    private final Pose altCollect3Pose = new Pose(123, 37, Math.toRadians(0)); // Collect third set of artifacts but it's shorter
     private final Pose collect4aPose = new Pose(132, 17, Math.toRadians(340)); // Collect the first of the fourth set of artifacts
     private final Pose collect4bPose = new Pose(132, 10, Math.toRadians(340)); // Collect the second of the fourth set of artifacts
     private final Pose collect4bControlPose = new Pose(128, 16, Math.toRadians(340)); // Control for collecting the 4b artifact
@@ -120,7 +132,7 @@ public class TwelveBallAutoC extends OpMode {
     private final Pose collect4cControlPose = new Pose(131, 13, Math.toRadians(270)); // Control for collecting the 4c artifact
     private Pose parkPose = new Pose(86, 50, Math.toRadians(270)); // Park Pose of our robot.
 
-    PathChain scanObelisk, scorePreload, scorePreloadSkipScan, grabPickup1, collectPickup1, openGate, scorePickup1, grabPickup2, collectPickup2, scorePickup2, grabPickup3, collectPickup3, scorePickup3, collectPickup4, scorePickup4, park;
+    PathChain scanObelisk, scorePreload, scorePreloadSkipScan, grabPickup1, collectPickup1, altCollectPickup1, openGate, altOpenGate, scorePickup1, grabPickup2, collectPickup2, altCollectPickup2, scorePickup2, grabPickup3, collectPickup3, altCollectPickup3, scorePickup3, collectPickup4, scorePickup4, park;
 
     void buildPaths() {
 
@@ -182,8 +194,18 @@ public class TwelveBallAutoC extends OpMode {
                     .setTangentHeadingInterpolation()
                     .build();
 
+            altCollectPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup1Pose, altCollect1Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
             openGate = follower.pathBuilder()
                     .addPath(new BezierCurve(collect1Pose, openGateControlPose, openGatePose))
+                    .setLinearHeadingInterpolation(collect1Pose.getHeading(), openGatePose.getHeading())
+                    .build();
+
+            altOpenGate = follower.pathBuilder()
+                    .addPath(new BezierCurve(altCollect1Pose, openGateControlPose, openGatePose))
                     .setLinearHeadingInterpolation(collect1Pose.getHeading(), openGatePose.getHeading())
                     .build();
 
@@ -210,6 +232,10 @@ public class TwelveBallAutoC extends OpMode {
                     .addPath(new BezierLine(pickup2Pose, collect2Pose))
                     .setTangentHeadingInterpolation()
                     .build();
+            altCollectPickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup2Pose, altCollect2Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
 
             /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
             scorePickup2 = follower.pathBuilder()
@@ -224,6 +250,10 @@ public class TwelveBallAutoC extends OpMode {
                     .build();
             collectPickup3 = follower.pathBuilder()
                     .addPath(new BezierLine(pickup3Pose, collect3Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
+            altCollectPickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup3Pose, altCollect3Pose))
                     .setTangentHeadingInterpolation()
                     .build();
 
@@ -281,11 +311,20 @@ public class TwelveBallAutoC extends OpMode {
                     .addPath(new BezierLine(pickup1Pose.mirror(), collect1Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
+            altCollectPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup1Pose.mirror(), altCollect1Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
 
             openGate = follower.pathBuilder()
                     .addPath(new BezierCurve(collect1Pose.mirror(), openGateControlPose.mirror(), openGatePose.mirror()))
                     .setLinearHeadingInterpolation(collect1Pose.mirror().getHeading(), openGatePose.mirror().getHeading())
                     .setHeadingConstraint(10)
+                    .build();
+
+            altOpenGate = follower.pathBuilder()
+                    .addPath(new BezierCurve(altCollect1Pose.mirror(), openGateControlPose.mirror(), openGatePose.mirror()))
+                    .setLinearHeadingInterpolation(collect1Pose.getHeading(), openGatePose.getHeading())
                     .build();
 
             // Avoid artifact 2 if shooting from the far zone
@@ -311,6 +350,10 @@ public class TwelveBallAutoC extends OpMode {
                     .addPath(new BezierLine(pickup2Pose.mirror(), collect2Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
+            altCollectPickup2 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup2Pose.mirror(), altCollect2Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
 
             /* This is our scorePickup2 PathChain. We are using a single path with a BezierLine, which is a straight line. */
             scorePickup2 = follower.pathBuilder()
@@ -325,6 +368,10 @@ public class TwelveBallAutoC extends OpMode {
                     .build();
             collectPickup3 = follower.pathBuilder()
                     .addPath(new BezierLine(pickup3Pose.mirror(), collect3Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+            altCollectPickup3 = follower.pathBuilder()
+                    .addPath(new BezierLine(pickup3Pose.mirror(), altCollect3Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
 
@@ -375,25 +422,26 @@ public class TwelveBallAutoC extends OpMode {
             case 12:
 
                 // DONE: SCAN MOTIF
+                if (pathTimer.getElapsedTimeSeconds() > 0.75) {
+                    LLResult result = limelight.getLatestResult();
 
-                LLResult result = limelight.getLatestResult();
+                    if (result != null && result.isValid()) {
+                        // Valid target detected
+                        List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
+                        for (LLResultTypes.FiducialResult fiducial : fiducials) {
+                            detectedID = fiducial.getFiducialId();
+                        }
 
-                if (result != null && result.isValid()) {
-                    // Valid target detected
-                    List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
-                    for (LLResultTypes.FiducialResult fiducial : fiducials) {
-                        detectedID = fiducial.getFiducialId();
-                    }
-
-                    if (detectedID == 21) {
-                        obeliskID = detectedID;
-                        motif = "GPP (Green Purple Purple)";
-                    } else if (detectedID == 22) {
-                        obeliskID = detectedID;
-                        motif = "PGP (Purple Green Purple)";
-                    } else if (detectedID == 23) {
-                        obeliskID = detectedID;
-                        motif = "PPG (Purple Purple Green)";
+                        if (detectedID == 21) {
+                            obeliskID = detectedID;
+                            motif = "GPP (Green Purple Purple)";
+                        } else if (detectedID == 22) {
+                            obeliskID = detectedID;
+                            motif = "PGP (Purple Green Purple)";
+                        } else if (detectedID == 23) {
+                            obeliskID = detectedID;
+                            motif = "PPG (Purple Purple Green)";
+                        }
                     }
                 }
                 if (pathTimer.getElapsedTimeSeconds() > MAX_SCAN_TIME && !follower.isBusy()) {
@@ -427,11 +475,13 @@ public class TwelveBallAutoC extends OpMode {
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
                 if (!follower.isBusy()) {
                     /* DONE: SHOOT PRELOAD BALLS */
-                    if (shotCounter < 3) {
-                        launch(true, false);
-                        if(shotCounter == 1) {
-                            leftGateServo.setPosition(openGateServo);
-                        }
+                    if(shotCounter == 0) {
+                        launch(true, true);
+                    } else if (shotCounter == 1) {
+                        launch(true, true);
+                        leftGateServo.setPosition(openGateServo);
+                    } else if (shotCounter == 2) {
+                        launch(true, true);
                     } else {
                         // TODO: Test if leaving wheel on is fine
                         // launcherController.setGoal(stopLauncherKineticState);
@@ -457,7 +507,7 @@ public class TwelveBallAutoC extends OpMode {
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     /* TODO: DECIDE BEST PATH POWER */
                     if (detectedID == 22) {
-                        follower.followPath(collectPickup1, 0.25, true);
+                        follower.followPath(altCollectPickup1, SLOW_INTAKE, true);
                     } else {
                         follower.followPath(collectPickup1, 0.7, true); //TODO: FIND BEST SORTING PATH SPEED
                     }
@@ -466,20 +516,26 @@ public class TwelveBallAutoC extends OpMode {
                 break;
             case 3:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if (follower.getPose().getX() > 106 && detectedID == 22 && colorAlliance == 1) {
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 22 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() < 38 && detectedID == 22 && colorAlliance == 2) {
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 22 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (!follower.isBusy()) {
+                if (!follower.isBusy() && (detectedID != 22)) {
+                    intakeMotor.setPower(STOP_SPEED);
                     follower.followPath(openGate,true);
+                    setPathState(101);
+                } else if (!follower.isBusy() && (detectedID == 22)){
+                    intakeMotor.setPower(STOP_SPEED);
+                    follower.followPath(altOpenGate, true);
                     setPathState(101);
                 }
                 break;
             case 101:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
-                if(!follower.isBusy()) {
+                intakeDetect();
+                if(follower.getPose().getX() > 127.5) {
                     intakeMotor.setPower(WEAK_SPEED);
                     follower.followPath(scorePickup1,true);
                     if (startingPlace == 2) {
@@ -493,20 +549,22 @@ public class TwelveBallAutoC extends OpMode {
                 break;
             case 4:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
-
-
+                intakeDetect();
                 if (!follower.isBusy()) {
                     /* DONE: SHOOT BALLS */
 
                     if (shotCounter == 0) {
                         launch(true, false);
-                        intakeMotor.setPower(INTAKING);
+                        if (detectedID == 22) {
+                            intakeMotor.setPower(INTAKING);
+                        }
                         // if (detectedID == 21) {
                          //   launch(true, true);
                          //   leftGateServo.setPosition(openLeftGateServo);
                         // }
                     }
                     if (shotCounter == 1) {
+                        intakeMotor.setPower(INTAKING);
                         if (detectedID == 22) {
                             launch(true, true);
                             leftGateServo.setPosition(openGateServo);
@@ -546,7 +604,7 @@ public class TwelveBallAutoC extends OpMode {
                     if (detectedID == 22) {
                         follower.followPath(collectPickup2, 0.7, true);
                     } else {
-                        follower.followPath(collectPickup2, 0.25, true); //TODO: FIND BEST SORTING PATH SPEED
+                        follower.followPath(altCollectPickup2, SLOW_INTAKE, true); //TODO: FIND BEST SORTING PATH SPEED
                     }
                     if ((detectedID == 22) || (detectedID == 23)) {
                         sorterServo.setPosition(sorterServoOpenRight);
@@ -555,23 +613,23 @@ public class TwelveBallAutoC extends OpMode {
                 }
                 break;
             case 6:
-                if (follower.getPose().getX() > 106 && detectedID == 21 && colorAlliance == 1) {
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 21 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() < 38 && detectedID == 21 && colorAlliance == 2) {
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 21 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
 
-                if (follower.getPose().getX() > 106 && detectedID == 23 && colorAlliance == 1) {
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 23 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenLeft);
                 }
-                if (follower.getPose().getX() < 38 && detectedID == 23 && colorAlliance == 2) {
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 23 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenLeft);
                 }
-                if (follower.getPose().getX() > 112 && detectedID == 23 && colorAlliance == 1) {
+                if (follower.getPose().getX() > secondBallXRed && detectedID == 23 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() < 32 && detectedID == 23 && colorAlliance == 2) {
+                if (follower.getPose().getX() < secondBallXBlue && detectedID == 23 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
 
@@ -589,29 +647,39 @@ public class TwelveBallAutoC extends OpMode {
                 break;
             case 7:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
+                intakeDetect();
+                if(follower.isBusy()) {
+                    actionTimer.reset();
+                }
                 if (!follower.isBusy()) {
                     /* DONE: SHOOT BALLS */
                     if (shotCounter == 0) {
                         launch(true, false);
-                        intakeMotor.setPower(INTAKING);
+                        if (detectedID != 22) {
+                            intakeMotor.setPower(INTAKING);
+                        }
+                        if(detectedID == 22) {
+                            if(actionTimer.seconds() > 0.3) {
+                                intakeMotor.setPower(INTAKING);
+                            } else {
+                                intakeMotor.setPower(STOP_SPEED);
+                            }
+                        }
                     }
                     if (shotCounter == 1) {
-                        if (detectedID == 21) {
+                        intakeMotor.setPower(INTAKING);
+                        if (!(detectedID == 22)) {
                             launch(true, true);
                             leftGateServo.setPosition(openGateServo);
                         } else {
                             launch(true, false);
                         }
                     } else if (shotCounter == 2) {
-                        if (detectedID == 21) {
+                        if (!(detectedID == 22)) {
                             launch(true, true);
                             leftGateServo.setPosition(openGateServo);
                         } else {
                             launch(true, false);
-                        }
-                        if (detectedID == 23) {
-                            launch(true, true);
-                            leftGateServo.setPosition(openGateServo);
                         }
                     }
                     if (shotCounter >= 3) {
@@ -621,8 +689,6 @@ public class TwelveBallAutoC extends OpMode {
                         } else {
                             sorterServo.setPosition(sorterServoOpenLeft);
                         }
-                        // TODO: Test if leaving wheel on is fine
-                        // launcherController.setGoal(stopLauncherKineticState);
                         follower.followPath(grabPickup3, true);
                         intakeMotor.setPower(INTAKING);
                         setPathState(8);
@@ -639,36 +705,40 @@ public class TwelveBallAutoC extends OpMode {
                     if (detectedID == 21) {
                         follower.followPath(collectPickup3, 0.7, true);
                     } else {
-                        follower.followPath(collectPickup3, 0.25, true);
+                        follower.followPath(altCollectPickup3, SLOW_INTAKE, true);
                     }
                     setPathState(9);
                 }
                 break;
 
             case 9:
-                if (follower.getPose().getX() > 106 && detectedID == 23 && colorAlliance == 1) {
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 23 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() < 38 && detectedID == 23 && colorAlliance == 2) {
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 23 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > 112 && detectedID == 22 && colorAlliance == 1) {
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 22 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() < 32 && detectedID == 22 && colorAlliance == 2) {
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 22 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > 116 && detectedID == 22 && colorAlliance == 1) {
-                    intakeMotor.setPower(WEAK_SPEED);
+                if (follower.getPose().getX() > secondBallXRed && detectedID == 22 && colorAlliance == 1) {
+                    sorterServo.setPosition(sorterServoOpenLeft);
                 }
-                if (follower.getPose().getX() < 28 && detectedID == 22 && colorAlliance == 2) {
-                    intakeMotor.setPower(WEAK_SPEED);
+                if (follower.getPose().getX() < secondBallXBlue && detectedID == 22 && colorAlliance == 2) {
+                    sorterServo.setPosition(sorterServoOpenLeft);
+                }
+                if (follower.getPose().getX() > thirdBallXRed && detectedID == 22 && colorAlliance == 1) {
+                    intakeMotor.setPower(STOP_SPEED);
+                }
+                if (follower.getPose().getX() < thirdBallXBlue && detectedID == 22 && colorAlliance == 2) {
+                    intakeMotor.setPower(STOP_SPEED);
                 }
                 if (!follower.isBusy()) {
                     /* TODO: BALL SORTING */
-
-
-                    /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
+                    intakeMotor.setPower(STOP_SPEED);
                     follower.followPath(scorePickup3, true);
                     if (startingPlace == 2) {
                         launcherController.setGoal(closeTargetLauncherKineticState);
@@ -676,22 +746,31 @@ public class TwelveBallAutoC extends OpMode {
                         launcherController.setGoal(farTargetLauncherKineticState);
                     }
                     shotCounter = 0;
-                    intakeMotor.setPower(WEAK_SPEED);
                     setPathState(10);
                 }
                 break;
             case 10:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the scorePose's position */
-
+                intakeDetect();
+                if (follower.isBusy()) {
+                    actionTimer.reset();
+                }
                 if (!follower.isBusy()) {
                     if (shotCounter == 0) {
                         launch(true, false);
-                        if (detectedID == 22) {
+                        if (detectedID == 23) {
+                            intakeMotor.setPower(INTAKING);
+                        }
+                        if ((actionTimer.seconds() > 0.3) && (detectedID == 22)) {
                             leftGateServo.setPosition(openGateServo);
                         }
                     }
                     if (shotCounter == 1) {
+                        intakeMotor.setPower(INTAKING);
                         launch(true, true);
+                        if ((actionTimer.seconds() > 0.2) && (detectedID == 22)) {
+                            leftGateServo.setPosition(openGateServo);
+                        }
                         if (detectedID == 23) {
                             leftGateServo.setPosition(openGateServo);
                         }
@@ -752,7 +831,7 @@ public class TwelveBallAutoC extends OpMode {
         /* Limelight Stuff */
         // Initialize Hardware
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        intakeMotor = hardwareMap.get(DcMotorEx.class, "intakeMotor");
         intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         launcher1 = hardwareMap.get(DcMotorEx.class, "launcher1");
         launcher2 = hardwareMap.get(DcMotorEx.class, "launcher2");
@@ -915,6 +994,28 @@ public class TwelveBallAutoC extends OpMode {
         autoToTeleop.endAuto = follower.getPose();
     }
 
+    void intakeDetect() {
+
+        if ((intakeMotor.getVelocity() > -50) && (intakeMotor.getVelocity() < 50)) {
+            isDetect = true;
+        }
+
+        if(isDetect && !wasDetect) {
+            intakeTimer.reset();
+        } else if (isDetect) {
+            intakeReset();
+        }
+
+        wasDetect = isDetect;
+    }
+    void intakeReset() {
+        intakeMotor.setPower(0.5*(OUTAKING));
+        if (intakeTimer.seconds() > 0.15) {
+            isDetect = false;
+            wasDetect = false;
+            intakeMotor.setPower(INTAKING);
+        }
+    }
     void launch(boolean shotRequested, boolean openGate) {
         switch (launchState) {
             case IDLE:
@@ -939,14 +1040,14 @@ public class TwelveBallAutoC extends OpMode {
                 launcherServo.setPosition(launcherServoUp);
                 launchState = LaunchState.LAUNCHING;
                 feederTimer.reset();
+
                 break;
 
             case LAUNCHING:
                 if (feederTimer.seconds() > MAX_FEED_TIME) {
-                    launchState = LaunchState.WAITING;
-                    launcherServo.setPosition(launcherServoDown);
-                    feederTimer.reset();
-
+                        launchState = LaunchState.WAITING;
+                        launcherServo.setPosition(launcherServoDown);
+                        feederTimer.reset();
                 }
                 break;
             case WAITING:

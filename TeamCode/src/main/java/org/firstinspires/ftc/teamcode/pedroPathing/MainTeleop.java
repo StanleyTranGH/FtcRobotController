@@ -71,18 +71,14 @@ public class MainTeleop extends OpMode {
     ElapsedTime feederTimer = new ElapsedTime();
 
     final double launcherServoDown = 0.4;
-    final double launcherServoUp = 0.15; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
-    final double sorterServoOpenLeft = 0.72; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.37; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
+    final double launcherServoUp = 0.17; // DONE: SET THESE VALUES TO PROPER SERVO POSITION
+    final double sorterServoOpenLeft = 0.70; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
+    final double sorterServoOpenRight = 0.3; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
     final double closeGateServo = 0.5; // DONE: GET GATE SERVO VALUES
     final double openGateServo = 0.64;
     String launcherRange = "CLOSE"; // CLOSE or FAR
     final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1780; // TODO: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1740;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1800;
     final double FAR_LAUNCHER_TARGET_VELOCITY = 2240; // TODO: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 2200;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 2280;
     double MIN_VELOCITY = 0;
     double TARGET_VELOCITY = 0;
     double MAX_VELOCITY = 0;
@@ -93,7 +89,7 @@ public class MainTeleop extends OpMode {
     double hoodTargetPosition = 0;
     double robotDistanceFromGoal = 0;
     boolean shootingMode = false;
-    int pedroMode = 1; // 1: Pedro + LL Tracking 2: Pedro Tracking 3: Limelight Tracking 4: No Tracking
+    int pedroMode = 0; // 0: Pedro + LL Tracking 1: Pedro Tracking 2: Limelight Tracking 3: No Tracking
     String pedroModeText = "Pedro + LL";
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
@@ -386,8 +382,8 @@ public class MainTeleop extends OpMode {
        */
 
         TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
-        MIN_VELOCITY = TARGET_VELOCITY - 40;
-        MAX_VELOCITY = TARGET_VELOCITY + 40;
+        MIN_VELOCITY = TARGET_VELOCITY - 50;
+        MAX_VELOCITY = TARGET_VELOCITY + 50;
         targetLauncherKineticState = new KineticState(0, TARGET_VELOCITY);
 
         if (gamepad2.yWasPressed()) {
@@ -413,7 +409,9 @@ public class MainTeleop extends OpMode {
             if (pedroMode > 3) {
                 pedroMode = 1;
             }
-            if(pedroMode == 1) {
+            if(pedroMode == 0) {
+                pedroModeText = "Pedro + LL Tracking";
+            } else if(pedroMode == 1) {
                 pedroModeText = "Only Pedro";
             } else if (pedroMode == 2) {
                 pedroModeText = "Only Limelight";
@@ -423,6 +421,12 @@ public class MainTeleop extends OpMode {
         }
 
         if(shootingMode) {
+            if(pedroMode == 0) { // Combined Tracking
+
+                turretTargetPosition = calculateTurretPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
+                hoodTargetPosition = calculateHoodPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
+
+            }
             if(pedroMode == 1) { // Pedro Tracking
 
                 turretTargetPosition = calculateTurretPositionPedro(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
@@ -503,33 +507,30 @@ public class MainTeleop extends OpMode {
 
         return targetVelocity;
     }
+    double calculateTurretPositionPedroLL (double currentX, double currentY, double robotHeadingDeg) {
+
+        double turretMin = 0.06;
+        double turretMax = 0.94;
+        double targetPosition = calculateTurretPositionLimelight(); // Default position
+
+        if(targetPosition == -1) {
+            targetPosition = calculateTurretPositionPedro(currentX, currentY, robotHeadingDeg);
+        }
+
+        return Range.clip(targetPosition, turretMin, turretMax);
+
+    }
     double calculateHoodPositionPedroLL (double currentX, double currentY, double robotHeadingDeg) {
 
-        double targetPosition = 0.5; // Default position
-        LLResult result = limelight.getLatestResult();
-        double detectedID = 0;
+        double hoodMin = 0.00;
+        double hoodMax = 0.56;
+        double targetPosition = calculateHoodPositionLimelight(); // Default position
 
-        if (result != null && result.isValid()) {
-            // Valid target detected
-            List<LLResultTypes.FiducialResult> fiducials = result.getFiducialResults();
-            for (LLResultTypes.FiducialResult fiducial : fiducials) {
-                detectedID = fiducial.getFiducialId();
-
-            }
-
+        if(targetPosition == -1) {
+            targetPosition = calculateHoodPositionPedro(currentX, currentY, robotHeadingDeg);
         }
 
-        if((detectedID == 24 && teleopColorAlliance == 1) || (detectedID == 20 && teleopColorAlliance == 2)) {
-
-            targetPosition = calculateHoodPositionPedro(currentX, currentY, robotHeadingDeg);
-
-        } else {
-
-            targetPosition = calculateHoodPositionPedro(currentX, currentY, robotHeadingDeg);
-
-        }
-
-        return targetPosition;
+        return Range.clip(targetPosition, hoodMin, hoodMax);
     }
     double wrapTo180(double angle) {
         while (angle > 180) angle -= 360;
@@ -538,7 +539,7 @@ public class MainTeleop extends OpMode {
     }
     double calculateTurretPositionPedro(double currentX, double currentY, double robotHeadingDeg) {
 
-        // TODO: FIND BEST GOAL COORDINATES
+        // DONE: FIND BEST GOAL COORDINATES
         double goalX = (teleopColorAlliance == 1) ? 142 : 2;
         double goalY = 142;
 
@@ -577,7 +578,7 @@ public class MainTeleop extends OpMode {
         // TODO: FINISH LIMELIGHT TRACKING CODE
         double detectedID = 0;
         double visionAngle;
-        double turretRest = 0.5;
+        double defaultValue = -1;
         LLResult result = limelight.getLatestResult();
 
         if (result != null && result.isValid()) {
@@ -600,10 +601,11 @@ public class MainTeleop extends OpMode {
             double servoRange = servoMax - servoMin;
 
             double servoPos = servoMid + (relativeAngleDeg / 180.0) * (servoRange / 2.0);
+            telemetry.addData("Ta", result.getTa());
 
             return Range.clip(servoPos, servoMin, servoMax);
         } else {
-            return turretRest;
+            return -1;
         }
     } 
 
@@ -620,7 +622,8 @@ public class MainTeleop extends OpMode {
     }
     double calculateHoodPositionLimelight() {
         double detectedID = 0;
-        double turretMin = 0;
+        double hoodMin = 0.00;
+        double hoodMax = 0.56;
         LLResult result = limelight.getLatestResult();
 
         if (result != null && result.isValid()) {
@@ -640,10 +643,10 @@ public class MainTeleop extends OpMode {
             double servoPosition = 0.002 * targetDistance - 0.09;
             // Relative angle (-180 to 180)
 
-            return Range.clip(servoPosition, 0.00, 0.56);
+            return Range.clip(servoPosition, hoodMin, hoodMax);
 
         } else {
-            return turretMin;
+            return -1;
         }
 
     }
