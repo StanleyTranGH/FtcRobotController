@@ -50,9 +50,9 @@ public class TwelveBallAutoC extends OpMode {
     double turretScore, turretPreloadScore, turretScan;
     final double turretRest = 0.5;
     final double SLOW_INTAKE = 0.3;
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1700; // DONE: FIND DESIRED LAUNCHER VELOCITY
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1640;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1720;
     final double FAR_LAUNCHER_TARGET_VELOCITY = 2250; // DONE: FINE DESIRED FAR LAUNCHER VELOCITY
     final double FAR_LAUNCHER_MIN_VELOCITY = 2200;
     final double FAR_LAUNCHER_MAX_VELOCITY = 2280;
@@ -72,9 +72,9 @@ public class TwelveBallAutoC extends OpMode {
     final double firstBallXRed = 106.3;
     final double secondBallXRed = 109.5;
     final double thirdBallXRed = 113.7;
-    final double firstBallXBlue = 144 - firstBallXRed;
-    final double secondBallXBlue = 144 - secondBallXRed;
-    final double thirdBallXBlue = 144 - thirdBallXRed;
+    final double firstBallXBlue = 38.8;
+    final double secondBallXBlue = 33.9;
+    final double thirdBallXBlue = 28.5;
     public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.006, 0, 0.0006); // DONE: GET VALUES
     public static double launcherFF = 0.0003;
     ControlSystem launcherController;
@@ -162,10 +162,10 @@ public class TwelveBallAutoC extends OpMode {
             // DONE: CHANGE THIS POSE TO CLOSE PARK
             parkPose = new Pose(122, 95, Math.toRadians(0)); // Park Pose of our robot.
 
-            turretPreloadScore = 0.39;
-            turretScore = 0.39;// DONE: GET ACTUAL TURRET SCORE POSITION
+            turretPreloadScore = 0.3727;
+            turretScore = 0.3827;// DONE: GET ACTUAL TURRET SCORE POSITION
             turretScan = 0.5; // DONE: GET ACTUAL TURRET SCAN POSITION
-            hoodScore = 0.07;
+            hoodScore = 0.0755;
         }
 
         if (colorAlliance == 1) {
@@ -535,7 +535,7 @@ public class TwelveBallAutoC extends OpMode {
             case 101:
                 /* This case checks the robot's position and will wait until the robot position is close (1 inch away) from the pickup1Pose's position */
                 intakeDetect();
-                if(follower.getPose().getX() > 127.5) {
+                if(((follower.getPose().getX() > 126 && colorAlliance == 1) || (follower.getPose().getX() < 18.1 && colorAlliance == 2)) && pathTimer.getElapsedTimeSeconds() > 0.4) {
                     intakeMotor.setPower(WEAK_SPEED);
                     follower.followPath(scorePickup1,true);
                     if (startingPlace == 2) {

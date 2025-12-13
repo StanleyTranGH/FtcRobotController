@@ -50,11 +50,11 @@ public class BackAndForthAuto extends OpMode {
     final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // DONE: FIND DESIRED LAUNCHER VELOCITY
     final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
-    final double FAR_LAUNCHER_TARGET_VELOCITY = 2250; // DONE: FINE DESIRED FAR LAUNCHER VELOCITY
-    final double FAR_LAUNCHER_MIN_VELOCITY = 2200;
-    final double FAR_LAUNCHER_MAX_VELOCITY = 2280;
+    final double FAR_LAUNCHER_TARGET_VELOCITY = 2300; // DONE: FINE DESIRED FAR LAUNCHER VELOCITY
+    final double FAR_LAUNCHER_MIN_VELOCITY = 2250;
+    final double FAR_LAUNCHER_MAX_VELOCITY = 2340;
     final double hoodRest = 0;
-    double hoodScore = 0.4; // TODO: FIND DESIRED HOOD POSITION
+    double hoodScore = 0.2; // TODO: FIND DESIRED HOOD POSITION
     final double STOP_SPEED = 0.0;
     final double MAX_FEED_TIME = 0.22;
     final double MAX_WAITING_TIME = 0.75;
@@ -132,7 +132,7 @@ public class BackAndForthAuto extends OpMode {
             scorePreloadPose = scorePose;
             turretScore = 0.325; // DONE: GET ACTUAL TURRET SCORE POSITION
             turretScan = 0.325; // DONE: GET ACTUAL TURRET SCAN POSITION
-            hoodScore = 0.22;
+            hoodScore = 0.2;
         } else if (startingPlace == 2) { // Close
             // NONE OF THIS STUFF MATTERS
 

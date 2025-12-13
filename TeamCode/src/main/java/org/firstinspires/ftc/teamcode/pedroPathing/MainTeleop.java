@@ -89,8 +89,9 @@ public class MainTeleop extends OpMode {
     double hoodTargetPosition = 0;
     double robotDistanceFromGoal = 0;
     boolean shootingMode = false;
-    int pedroMode = 0; // 0: Pedro + LL Tracking 1: Pedro Tracking 2: Limelight Tracking 3: No Tracking
+    int pedroMode = 1; // 0: Pedro + LL Tracking 1: Pedro Tracking 2: Limelight Tracking 3: No Tracking
     String pedroModeText = "Pedro + LL";
+    static double goalXRed = 142;
     final double STOP_SPEED = 0.0;
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState closeTargetLauncherKineticState = new KineticState(0, CLOSE_LAUNCHER_TARGET_VELOCITY);
@@ -150,7 +151,7 @@ public class MainTeleop extends OpMode {
         // DONE: SWAP PARK POSES FOR REAL COMPETITION (mirror this one and un-mirror other one)
         // TODO: FIND REAL PARK & SCORE POSE
         parkPose = new Pose(108.4, 33.8, Math.toRadians(90));
-        scorePose = new Pose(92, 88, Math.toRadians(225));
+        scorePose = new Pose(100, 100, Math.toRadians(180));
 
         if(teleopStartingPlace == 1) {
             // startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
@@ -426,8 +427,7 @@ public class MainTeleop extends OpMode {
                 turretTargetPosition = calculateTurretPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
                 hoodTargetPosition = calculateHoodPositionPedroLL(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
 
-            }
-            if(pedroMode == 1) { // Pedro Tracking
+            } else if(pedroMode == 1) { // Pedro Tracking
 
                 turretTargetPosition = calculateTurretPositionPedro(follower.getPose().getX(), follower.getPose().getY(), Math.toDegrees(follower.getHeading()));
                 hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
@@ -435,7 +435,7 @@ public class MainTeleop extends OpMode {
             } else if (pedroMode == 2) { // Limelight Tracking
                 turretTargetPosition = calculateTurretPositionLimelight();
                 // hoodTargetPosition = calculateHoodPositionLimelight(); TODO: COMPLETE HOOD POSITION LIMELIGHT AND UNCOMMENT THIS OUT
-                hoodTargetPosition = hoodMinPosition;
+                hoodTargetPosition = calculateHoodPositionPedro(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
             } else { // Default Settings
                 turretTargetPosition = turretRestPosition;
                 hoodTargetPosition = hoodMinPosition;
@@ -505,7 +505,7 @@ public class MainTeleop extends OpMode {
 
         double targetVelocity = 8.41935 * goalDistance + 1103.3871;
 
-        return targetVelocity;
+        return Range.clip(targetVelocity, 0, 2420);
     }
     double calculateTurretPositionPedroLL (double currentX, double currentY, double robotHeadingDeg) {
 
@@ -540,7 +540,7 @@ public class MainTeleop extends OpMode {
     double calculateTurretPositionPedro(double currentX, double currentY, double robotHeadingDeg) {
 
         // DONE: FIND BEST GOAL COORDINATES
-        double goalX = (teleopColorAlliance == 1) ? 142 : 2;
+        double goalX = (teleopColorAlliance == 1) ? goalXRed : 2;
         double goalY = 142;
 
         double shooterOffset = -2.5;
@@ -590,7 +590,7 @@ public class MainTeleop extends OpMode {
             }
         }
 
-        if (detectedID == 20 && teleopColorAlliance == 2 || detectedID == 24 && teleopColorAlliance == 1) {
+        if ((detectedID == 20 && teleopColorAlliance == 2) || (detectedID == 24 && teleopColorAlliance == 1)) {
             visionAngle = result.getTx();
             double relativeAngleDeg = -visionAngle;
 
@@ -635,7 +635,7 @@ public class MainTeleop extends OpMode {
             }
         }
 
-        if (detectedID == 20 && teleopColorAlliance == 2 || detectedID == 24 && teleopColorAlliance == 1) {
+        if ((detectedID == 20 && teleopColorAlliance == 2) || (detectedID == 24 && teleopColorAlliance == 1)) {
 
             double ta = result.getTa();
             double targetDistance = 1 * ta + 1; // TODO: Regression the equation
