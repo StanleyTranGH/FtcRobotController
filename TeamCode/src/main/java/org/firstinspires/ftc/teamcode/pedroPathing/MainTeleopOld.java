@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
-import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
-
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
@@ -17,7 +15,6 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
@@ -35,7 +32,7 @@ import dev.nextftc.control.feedback.PIDCoefficients;
 
 @Configurable
 @TeleOp(name = "Main Teleop", group = "Official")
-public class MainTeleop extends OpMode {
+public class MainTeleopOld extends OpMode {
     private Follower follower;
     //TODO: CHANGE THIS STARTING POSE AFTER AUTO IS DONE
     public static Pose startingPose = new Pose(86, 50, Math.toRadians(90)); // Park Pose of our robot.; //See ExampleAuto to understand how to use this
@@ -121,7 +118,6 @@ public class MainTeleop extends OpMode {
         gateServo = hardwareMap.get(Servo.class, "gateServo");
         turretServo = hardwareMap.get(Servo.class, "turretServo");
         hoodServo = hardwareMap.get(Servo.class, "hoodServo");
-
 
         follower = Constants.createFollower(hardwareMap);
         follower.update();
