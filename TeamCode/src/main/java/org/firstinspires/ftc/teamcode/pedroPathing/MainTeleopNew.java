@@ -60,7 +60,7 @@ public class MainTeleopNew extends OpMode {
     private boolean robotCentricOn = false;
     double distanceFromGoal;
     final double intakePower = 1.0;
-    final double transferPower = 0.8; // TODO: TEST BEST POWER FOR TRANSFER
+    final double transferPower = 0.9; // TODO: TEST BEST POWER FOR TRANSFER
     final double restPower = 0.0;
 
     /* Servo Positions */
@@ -283,7 +283,7 @@ public class MainTeleopNew extends OpMode {
 
         /* DRIVER 2 GAMEPAD SHOOTING CODE */
         if (gamepad2.yWasPressed()) {
-            // TODO: IMPLEMENT SHOOT MODE
+            // DONE: IMPLEMENT SHOOT MODE
             shootState = ShootState.SHOOTING;
             launcherController.setGoal(targetLauncherKineticState);
         } else if (gamepad2.bWasPressed()) { // stop flywheel
@@ -360,9 +360,24 @@ public class MainTeleopNew extends OpMode {
             robotCentricOn = !robotCentricOn;
         }
 
-        telemetryM.debug("position", follower.getPose());
-        telemetryM.debug("velocity", follower.getVelocity());
-        telemetryM.debug("automatedDrive", automatedDrive);
+        telemetry.addLine("-------- PATHING --------");
+        telemetry.addData("Position", follower.getPose());
+        telemetry.addData("Automated Drive On?", automatedDrive);
+        telemetry.addData("Distance", distanceFromGoal);
+
+        telemetry.addLine("-------- LAUNCHER --------");
+        telemetry.addData("Launch State", launchState);
+        telemetry.addData("Launcher Velocity", launcher1.getVelocity());
+        telemetry.addData("Target Velocity", TARGET_VELOCITY);
+        telemetry.addData("Launcher Power", launcher1.getPower());
+
+        telemetry.addLine("-------- VARIABLES --------");
+        telemetry.addData("Current Alliance", teleopColorAlliance);
+        telemetry.addData("Starting Position", teleopStartingPlace);
+
+        telemetry.addLine("-------- TURRET --------");
+        telemetry.addData("Turret Target Position", turretTargetPosition);
+        telemetry.addData("Hood Servo Position", hoodTargetPosition);
     }
     double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingDeg) {
         // Goal coordinates
