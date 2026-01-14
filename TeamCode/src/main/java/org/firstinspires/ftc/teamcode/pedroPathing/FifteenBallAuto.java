@@ -68,6 +68,8 @@ public class FifteenBallAuto extends OpMode {
     final double firstBallXBlue = 38.8;
     final double secondBallXBlue = 33.9;
     final double thirdBallXBlue = 28.5;
+    final double sortIntakePathSpeed = 0.3;
+    final double normalIntakePathSpeed = 0.75;
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
     final double TRANSFER_POWER = 0.8; // todo: find the right transfer power
@@ -460,9 +462,9 @@ public class FifteenBallAuto extends OpMode {
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     /* TODO: DECIDE BEST PATH POWER */
                     if (detectedID == 22) {
-                        follower.followPath(collectPickup2, 0.7, true);
+                        follower.followPath(collectPickup2, normalIntakePathSpeed, true);
                     } else {
-                        follower.followPath(collectPickup2, 0.25, true); //TODO: FIND BEST SORTING PATH SPEED
+                        follower.followPath(collectPickup2, sortIntakePathSpeed, true); //TODO: FIND BEST SORTING PATH SPEED
                     }
                     if ((detectedID == 22)) {
                         sorterServo.setPosition(sorterServoOpenRight);
@@ -598,9 +600,9 @@ public class FifteenBallAuto extends OpMode {
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     /* TODO: DECIDE BEST PATH POWER */
                     if (detectedID == 21) {
-                        follower.followPath(collectPickup3, 0.7, true);
+                        follower.followPath(collectPickup3, normalIntakePathSpeed, true);
                     } else {
-                        follower.followPath(collectPickup3, 0.25, true);
+                        follower.followPath(collectPickup3, sortIntakePathSpeed, true);
                     }
                     setPathState(11);
                 }
