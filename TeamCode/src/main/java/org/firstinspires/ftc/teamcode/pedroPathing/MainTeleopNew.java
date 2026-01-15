@@ -60,16 +60,18 @@ public class MainTeleopNew extends OpMode {
     private boolean robotCentricOn = false;
     double distanceFromGoal;
     final double intakePower = 1.0;
-    final double transferPower = 0.9; // TODO: TEST BEST POWER FOR TRANSFER
+    final double transferPower = 1.0; // DONE: TEST BEST POWER FOR TRANSFER
     final double restPower = 0.0;
+    double tempHoodTarget = 0.0;
+    static double redGoalX = 142;
 
     /* Servo Positions */
-    final double sorterServoOpenRight = 0.3; // TODO: SET SORTER SERVO POSITIONS
-    final double sorterServoOpenLeft = 0.7;
-    final double closeGateServo = 0.0; // TODO: SET GATE SERVO POSITIONS
-    final double openGateServo = 0.0;
-    final double closeShooterGateServo = 0.0; // TODO: SET SHOOTER GATE POSITIONS
-    final double openShooterGateServo = 0.0;
+    final double sorterServoOpenRight = 0.6; // DONE: SET SORTER SERVO POSITIONS
+    final double sorterServoOpenLeft = 0.3;
+    final double closeGateServo = 0.85; // DONE: SET GATE SERVO POSITIONS
+    final double openGateServo = 1.0;
+    final double closeShooterGateServo = 0.52; // DONE: SET SHOOTER GATE POSITIONS
+    final double openShooterGateServo = 0.97;
 
     /* Turret Stuff */
     double turretTargetPosition = 0.0;
@@ -77,16 +79,18 @@ public class MainTeleopNew extends OpMode {
     final double turretRestPosition = 0.0;
     final double hoodRestPosition = 0.0;
     ControlSystem turretController;
-    public static PIDCoefficients turretPIDCoefficients = new PIDCoefficients(0, 0, 0); //TODO: TUNE TURRET PID
+    public static PIDCoefficients turretPIDCoefficients = new PIDCoefficients(0.005, 0, 0.0002); //DONE: TUNE TURRET PID
+    public static double turretFF = 0.0;
     KineticState turretRestKineticState = new KineticState(0);
     KineticState turretTargetKineticState = turretRestKineticState;
     KineticState turretCurrentKineticState = turretTargetKineticState;
 
     /* Launcher Stuff */
     ControlSystem launcherController;
-    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.006, 0, 0.0006); // DONE: GET VALUES
-    public static double launcherFF = 0.0003; // TODO: RE-TUNE LAUNCHER PIDF
-    double MIN_VELOCITY, TARGET_VELOCITY, MAX_VELOCITY;
+    public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.005, 0, 0.0005); // DONE: GET VALUES
+    public static double launcherFF = 0.0003; // DONE: RE-TUNE LAUNCHER PIDF
+    double MIN_VELOCITY, MAX_VELOCITY;
+    double TARGET_VELOCITY = 1500; //TODO: REMOVE LATER AFTER TESTING
     KineticState stopLauncherKineticState = new KineticState(0, 0);
     KineticState targetLauncherKineticState = stopLauncherKineticState;
     KineticState currentLauncherKineticState = targetLauncherKineticState;
@@ -124,10 +128,12 @@ public class MainTeleopNew extends OpMode {
         launcher1.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         launcher2.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         launcher1.setDirection(DcMotorSimple.Direction.REVERSE);
+        launcher1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        launcher2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         launcher1.setPower(STOP_SPEED);
         launcher2.setPower(STOP_SPEED);
+        turretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turretMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        turretMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turretMotor.setPower(STOP_SPEED);
 
         // Initialize Launcher PID
@@ -138,6 +144,7 @@ public class MainTeleopNew extends OpMode {
 
         turretController = ControlSystem.builder()
                 .posPid(turretPIDCoefficients)
+                .basicFF(turretFF)
                 .build();
 
         // Carry over variables from autoToTeleop
@@ -203,6 +210,7 @@ public class MainTeleopNew extends OpMode {
         /* Set all Servo Start Positions */
         sorterServo.setPosition(sorterServoOpenRight);
         shooterGateServo.setPosition(closeShooterGateServo);
+        gateServo.setPosition(closeGateServo);
     }
     @Override
     public void loop() {
@@ -274,9 +282,15 @@ public class MainTeleopNew extends OpMode {
         }
 
         /* Set Shooter Velocity */
-        // TODO: CHECK IF follower.getHeading() IS IN RADIANS OR DEGREES
+        // DONE: CHECK IF follower.getHeading() IS IN RADIANS OR DEGREES (its in radians)
         distanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
-        TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
+        // TODO: REMOVE TEST CODE LATER
+        // TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
+        if(gamepad2.dpadUpWasPressed()) {
+            TARGET_VELOCITY = TARGET_VELOCITY + 10;
+        } else if(gamepad2.dpadDownWasPressed()) {
+            TARGET_VELOCITY = TARGET_VELOCITY - 10;
+        }
         MIN_VELOCITY = TARGET_VELOCITY - 50;
         MAX_VELOCITY = TARGET_VELOCITY + 50;
         targetLauncherKineticState = new KineticState(0, TARGET_VELOCITY);
@@ -301,13 +315,23 @@ public class MainTeleopNew extends OpMode {
             gateServo.setPosition(openGateServo);
         }
 
-        // TODO: IMPLEMENT LIMELIGHT RE_LOCALIZING
+        // DONE: IMPLEMENT LIMELIGHT RE_LOCALIZING (DO LATER)
         if(shootState == ShootState.SHOOTING) {
+            intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
             turretTargetPosition = calculateTurretPosition(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
             hoodTargetPosition = calculateHoodPosition(follower.getPose().getX(), follower.getPose().getY());
 
-            turretTargetKineticState = new KineticState(turretTargetPosition);
-            hoodServo.setPosition(hoodTargetPosition);
+            turretTargetKineticState = new KineticState(turretTargetPosition, 0);
+
+            // TODO: REMOVE TEMPORARY TESTING CODE LATER
+            if(gamepad2.dpadLeftWasPressed()) {
+                tempHoodTarget = tempHoodTarget - 0.005;
+            } if (gamepad2.dpadRightWasPressed()) {
+                tempHoodTarget = tempHoodTarget + 0.005;
+            }
+            hoodServo.setPosition(tempHoodTarget);
+            // hoodServo.setPosition(hoodTargetPosition);
 
             shooterGateServo.setPosition(openShooterGateServo);
         } else {
@@ -318,15 +342,24 @@ public class MainTeleopNew extends OpMode {
             shooterGateServo.setPosition(closeShooterGateServo);
         }
         turretController.setGoal(turretTargetKineticState);
-        turretCurrentKineticState = new KineticState(turretMotor.getCurrentPosition());
+        turretCurrentKineticState = new KineticState(turretMotor.getCurrentPosition(), turretMotor.getVelocity());
         double turretPower = turretController.calculate(turretCurrentKineticState);
-        turretMotor.setPower(turretPower);
+        turretMotor.setPower(
+                turretController.calculate(
+                        new KineticState(turretMotor.getCurrentPosition(), turretMotor.getVelocity())
+                )
+        );
 
         /* Set shooter power to calculated power */
         currentLauncherKineticState = new KineticState(launcher1.getCurrentPosition(), launcher1.getVelocity());
         double launcherPower = launcherController.calculate(currentLauncherKineticState);
-        launcher1.setPower(launcherPower);
-        launcher2.setPower(launcherPower);
+        if(shootState == ShootState.SHOOTING || shootState == ShootState.INTAKING) {
+            launcher1.setPower(launcherPower);
+            launcher2.setPower(launcherPower);
+        } else {
+            launcher1.setPower(STOP_SPEED);
+            launcher2.setPower(STOP_SPEED);
+        }
 
         if(shootState == ShootState.SHOOTING) {
             if(gamepad2.right_bumper) {
@@ -339,8 +372,8 @@ public class MainTeleopNew extends OpMode {
         // Lift Mode
         /*
         if (gamepad1.bWasPressed()) {
-            // TODO: Set to a different less accessible button
-            // TODO: Implement lift-mode code here
+            // DONE: Set to a different less accessible button
+            // DONE: Implement lift-mode code here (DOING LATER)
             follower.followPath(parkChain.get());
             automatedDrive = true;
         }
@@ -377,19 +410,18 @@ public class MainTeleopNew extends OpMode {
 
         telemetry.addLine("-------- TURRET --------");
         telemetry.addData("Turret Target Position", turretTargetPosition);
-        telemetry.addData("Hood Servo Position", hoodTargetPosition);
+        telemetry.addData("Turret Current Position", turretMotor.getCurrentPosition());
+        //        telemetry.addData("Hood Servo Position", hoodTargetPosition);
+        telemetry.addData("Hood Servo Position", tempHoodTarget
+        );
     }
-    double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingDeg) {
+    double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingRad) {
         // Goal coordinates
         double goalX = (teleopColorAlliance == 1) ? 142 : 2;
         double goalY = 142;
 
         // Shooter offset relative to robot center
         double shooterOffset = -2.0; // 2 inches BEHIND robot center (negative = behind)
-
-        telemetry.addData("Heading Deg", headingDeg);
-        // Convert heading to radians
-        double headingRad = headingDeg;
 
         // Compute shooter position using rotation
         double shooterX = currentX + shooterOffset * Math.cos(headingRad);
@@ -403,7 +435,7 @@ public class MainTeleopNew extends OpMode {
     }
 
     double calculateVelocity (double currentX, double currentY, double headingDeg) {
-        double targetVelocity = 8.41935 * distanceFromGoal + 1103.3871;
+        double targetVelocity = 3.95833 * distanceFromGoal + 1402.08333;
 
         return Range.clip(targetVelocity, 0, 2420);
     }
@@ -421,7 +453,7 @@ public class MainTeleopNew extends OpMode {
     double calculateTurretPosition(double currentX, double currentY, double robotHeadingRad) {
 
         // ===== FIELD GOAL =====
-        double goalX = (teleopColorAlliance == 1) ? 142 : 2;
+        double goalX = (teleopColorAlliance == 1) ? redGoalX : 2;
         double goalY = 142;
 
         // ===== SHOOTER OFFSET (behind robot center) =====
@@ -441,9 +473,6 @@ public class MainTeleopNew extends OpMode {
 
         // Wrap to [-180, 180]
         relativeAngleDeg = wrapTo180(relativeAngleDeg);
-
-        // Invert if motor direction requires it
-        relativeAngleDeg *= -1;
 
         // ===== ANGLE → ENCODER TICKS =====
         final double TICKS_PER_DEGREE = 1538.0 / 360.0; // ≈ 4.27

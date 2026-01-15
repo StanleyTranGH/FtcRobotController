@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing;
 
+import com.pedropathing.control.FilteredPIDFCoefficients;
 import com.pedropathing.control.PIDFCoefficients;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.follower.FollowerConstants;
@@ -17,11 +18,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 public class Constants {
     public static FollowerConstants followerConstants = new FollowerConstants()
             .mass(13.43) // DONE: ADD THE KG OF ROBOT
-            .forwardZeroPowerAcceleration(-39.7212811090403)
-            .lateralZeroPowerAcceleration(-67.5856654379795)
+            .forwardZeroPowerAcceleration(-32.14534165966416)
+            .lateralZeroPowerAcceleration(-71.3706667117393)
             .centripetalScaling(0.002)
             .translationalPIDFCoefficients(new PIDFCoefficients(0.1, 0, 0.01, 0.03))
-            .headingPIDFCoefficients(new PIDFCoefficients(0.9, 0, 0.02, 0.02))
+            .headingPIDFCoefficients(new PIDFCoefficients(1, 0, 0.02, 0.045))
+            .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.015, 0, 0.00001, 0.6, 0.01))
             ;
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
@@ -44,8 +46,8 @@ public class Constants {
             .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
             .rightFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
             .rightRearMotorDirection(DcMotorSimple.Direction.FORWARD)
-            .xVelocity(80.79654387226256)
-            .yVelocity(65.63954318789986)
+            .xVelocity(74.64236570343257)
+            .yVelocity(57.033185343104094)
             ;
 
     public static Follower createFollower(HardwareMap hardwareMap) {
