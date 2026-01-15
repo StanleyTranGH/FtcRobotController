@@ -516,7 +516,7 @@ public class FifteenBallAuto extends OpMode {
                     intakeMotor.setPower(TRANSFER_POWER);
                     if (shotCounter == 0) {
                         launch(true, false);
-                        if (detectedID == 23) { // todo: check gate for timing
+                        if (detectedID == 23) {
                             launch(true, true);
                             leftGateServo.setPosition(openLeftGateServo);
                         } else {
@@ -695,6 +695,7 @@ public class FifteenBallAuto extends OpMode {
                     /* Since this is a pathChain, we can have Pedro hold the end point while we are scoring the sample */
                     follower.followPath(scorePickup1,true);
                     intakeMotor.setPower(TRANSFER_POWER);
+                    shotCounter = 0;
                     setPathState(15);
                 }
             case 15:
