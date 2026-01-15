@@ -117,6 +117,7 @@ public class SortAuto extends OpMode{
 
     int shootGateLoop = 1;
     final double intakePathSpeed = 0.8;
+    final double sortPathSpeed = 0.3;
 
     PathChain scanObelisk, scorePreload, grabPickup2, collectPickup2, scorePickup2, openGate, collectPickupGate, scorePickupGate, grabPickup1, collectPickup1, scorePickup1, grabPickup3, collectPickup3, scorePickup3;
 
@@ -313,7 +314,13 @@ public class SortAuto extends OpMode{
             case 3:
                 if (!follower.isBusy()) {
                     intakeMotor.setPower(INTAKING);
-                    follower.followPath(collectPickup2, intakePathSpeed, true);
+                    if (detectedID == 22) {
+                        follower.followPath(collectPickup2, intakePathSpeed, true);
+                        sorterServo.setPosition(sorterServoOpenRight);
+                    } else {
+                        follower.followPath(collectPickup2, sortPathSpeed, true);
+                        sorterServo.setPosition(sorterServoOpenRight);
+                    }
                     setPathState(4);
                 }
                 break;
@@ -404,7 +411,13 @@ public class SortAuto extends OpMode{
                 break;
             case 9:
                 if (!follower.isBusy()) {
-                    follower.followPath(collectPickup1, intakePathSpeed, true);
+                    if (detectedID == 23) {
+                        follower.followPath(collectPickup2, intakePathSpeed, true);
+                        sorterServo.setPosition(sorterServoOpenRight);
+                    } else {
+                        follower.followPath(collectPickup2, sortPathSpeed, true);
+                        sorterServo.setPosition(sorterServoOpenLeft);
+                    }
                     setPathState(10);
                 }
                 break;
@@ -464,7 +477,13 @@ public class SortAuto extends OpMode{
                 break;
             case 12:
                 if (!follower.isBusy()) {
-                    follower.followPath(collectPickup3, intakePathSpeed, true);
+                    if (detectedID == 21) {
+                        follower.followPath(collectPickup2, intakePathSpeed, true);
+                        sorterServo.setPosition(sorterServoOpenRight);
+                    } else {
+                        follower.followPath(collectPickup2, sortPathSpeed, true);
+                        sorterServo.setPosition(sorterServoOpenLeft);
+                    }
                     setPathState(13);
                 }
                 break;
