@@ -39,12 +39,12 @@ public class SortAuto extends OpMode{
     Servo leftGateServo;
     Servo hoodServo;
     Servo shooterGateServo;
-    final double closeShooterGateServo = 0.52; // DONE : SET SHOOTER GATE POSITIONS
+    final double sorterServoOpenRight = 0.7; // DONE: SET SORTER SERVO POSITIONS
+    final double sorterServoOpenLeft = 0.3;
+    final double closeLeftGateServo = 0.83; // DONE: SET GATE SERVO POSITIONS
+    final double openLeftGateServo = 0.95;
+    final double closeShooterGateServo = 0.52; // DONE: SET SHOOTER GATE POSITIONS
     final double openShooterGateServo = 0.97;
-    final double sorterServoOpenLeft = 0.3; //DONE: SET THIS VALUE TO OPEN THE LEFT SIDE
-    final double sorterServoOpenRight = 0.6; //DONE: SET THIS VALUE TO OPEN THE RIGHT SIDE
-    final double closeLeftGateServo = 0.85; // DONE: GET THE GATE CLOSE VALUE
-    final double openLeftGateServo = 1.0; //DONE: GET THE GATE OPEN VALUE
 
     // turret stuff
     final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // todo: find target velocity

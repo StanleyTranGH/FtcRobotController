@@ -499,7 +499,7 @@ public class MainTeleopOld extends OpMode {
     double calculateVelocity (double currentX, double currentY, double headingDeg) {
         double goalDistance = calculateRobotDistanceFromGoal(currentX, currentY, headingDeg);
 
-        double targetVelocity = 8.41935 * goalDistance + 1103.3871;
+        double targetVelocity = 236.40665 * Math.sin(goalDistance + 3.04697) + 1557.29057;
 
         return Range.clip(targetVelocity, 0, 2420);
     }
@@ -611,7 +611,7 @@ public class MainTeleopOld extends OpMode {
 
         // Scale distance to the proper
        // double servoPosition = -5.339981 + 0.3090759*targetDistance - 0.00610722*Math.pow(targetDistance, 2) + 0.00004666887*Math.pow(targetDistance, 3) - 1.405935 * Math.pow(10, -8) *Math.pow(targetDistance, 4) - 9.799439 * Math.pow(10, -10) * Math.pow(targetDistance, 5);
-        double servoPosition = 0.002 * targetDistance - 0.09;
+        double servoPosition = -((2.76715 * Math.pow(10, -8)) * Math.pow(targetDistance, 4)) + (0.0000112127 * Math.pow(targetDistance, 3)) - (0.0015832 * Math.pow(targetDistance, 2)) + (0.0944992 * targetDistance)- 1.95656;
         // Relative angle (-180 to 180)
 
         return Range.clip(servoPosition, 0.00, 0.56);

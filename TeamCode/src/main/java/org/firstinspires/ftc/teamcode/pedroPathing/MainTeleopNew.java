@@ -66,10 +66,10 @@ public class MainTeleopNew extends OpMode {
     static double redGoalX = 142;
 
     /* Servo Positions */
-    final double sorterServoOpenRight = 0.6; // DONE: SET SORTER SERVO POSITIONS
+    final double sorterServoOpenRight = 0.7; // DONE: SET SORTER SERVO POSITIONS
     final double sorterServoOpenLeft = 0.3;
-    final double closeGateServo = 0.85; // DONE: SET GATE SERVO POSITIONS
-    final double openGateServo = 1.0;
+    final double closeGateServo = 0.83; // DONE: SET GATE SERVO POSITIONS
+    final double openGateServo = 0.95;
     final double closeShooterGateServo = 0.52; // DONE: SET SHOOTER GATE POSITIONS
     final double openShooterGateServo = 0.97;
 
@@ -319,7 +319,9 @@ public class MainTeleopNew extends OpMode {
         if(shootState == ShootState.SHOOTING) {
             intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
-            turretTargetPosition = calculateTurretPosition(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
+            // TODO: Uncomment after we want to ye idk what I"m typing here I'm just ramblin' cuz I'm a ramblin' man
+            //turretTargetPosition = calculateTurretPosition(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
+            turretTargetPosition = 0;
             hoodTargetPosition = calculateHoodPosition(follower.getPose().getX(), follower.getPose().getY());
 
             turretTargetKineticState = new KineticState(turretTargetPosition, 0);
@@ -459,8 +461,8 @@ public class MainTeleopNew extends OpMode {
         // ===== SHOOTER OFFSET (behind robot center) =====
         double shooterOffset = -2.5; // inches
 
-        double shooterX = currentX - shooterOffset * Math.cos(robotHeadingRad);
-        double shooterY = currentY - shooterOffset * Math.sin(robotHeadingRad);
+        double shooterX = currentX + shooterOffset * Math.cos(robotHeadingRad);
+        double shooterY = currentY + shooterOffset * Math.sin(robotHeadingRad);
 
         // ===== ANGLE TO GOAL (FIELD FRAME) =====
         double dx = goalX - shooterX;
