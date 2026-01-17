@@ -393,10 +393,12 @@ public class BackAndForthAuto extends OpMode {
                 turretServo.setPosition(turretRest);
                 follower.followPath(park, true);
                 setPathState(5);
+                break;
             case 5:
                 if(!follower.isBusy()) {
                     setPathState(-1);
                 }
+                break;
         }
     }
 

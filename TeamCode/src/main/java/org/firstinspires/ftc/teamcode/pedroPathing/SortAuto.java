@@ -569,8 +569,8 @@ public class SortAuto extends OpMode{
         hoodServo = hardwareMap.get(Servo.class, "hoodServo");
         turretMotor = hardwareMap.get(DcMotorEx.class, "turretMotor");
 
+        turretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turretMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        turretMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turretMotor.setPower(STOP_SPEED);
 
         launcher1.setZeroPowerBehavior(BRAKE);

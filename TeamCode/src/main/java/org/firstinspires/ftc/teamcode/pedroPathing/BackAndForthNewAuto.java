@@ -8,8 +8,6 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -18,14 +16,12 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import java.util.List;
-
 import dev.nextftc.control.ControlSystem;
 import dev.nextftc.control.KineticState;
 import dev.nextftc.control.feedback.PIDCoefficients;
 
-@Autonomous(name = "No Sort Auto", group = "Official")
-public class NoSortAuto extends OpMode{
+@Autonomous(name = "New Back And Forth", group = "Official")
+public class BackAndForthNewAuto extends OpMode{
     private Follower follower;
     private Timer pathTimer, ballTimer, opmodeTimer;
 
@@ -47,9 +43,9 @@ public class NoSortAuto extends OpMode{
     final double openShooterGateServo = 0.97;
 
     // turret stuff
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1420; // todo: find target velocity
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1340;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1440;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1880; // todo: find target velocity
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1800;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1900;
     final double STOP_SPEED = 0.0;
     final double MAX_BALL_TIME = 0.15; // todo: find actual max feed time
     final double MAX_SCAN_TIME = 2.0;
@@ -76,7 +72,7 @@ public class NoSortAuto extends OpMode{
     KineticState currentLauncherKineticState = new KineticState(0, 0);
     double turretTargetPosition = 0.0;
     final double hoodRest = 0;
-    double hoodScore = 0.3; // todo: find hood angles
+    double hoodScore = 0.38; // todo: find hood angles
     KineticState turretRestKineticState = new KineticState(0);
     KineticState turretTargetKineticState = turretRestKineticState;
     KineticState turretCurrentKineticState = turretTargetKineticState;
@@ -101,44 +97,50 @@ public class NoSortAuto extends OpMode{
 
     // pedropathing
     private int pathState; //DONE: use visualizer find poses
-    private final Pose startPose = new Pose(125, 120, Math.toRadians(127)); // Start Pose of our robot.
+    private final Pose startPose = new Pose(88, 8, Math.toRadians(0)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(105, 105, Math.toRadians(127)); // Scan Obelisk
-    private final Pose scorePose = new Pose(90, 90, Math.toRadians(0)); // Scoring Pose of our robot.
+    private final Pose scorePose = new Pose(85, 14, Math.toRadians(0)); // Scoring Pose of our robot.
     private final Pose parkScorePose = new Pose (93, 110, Math.toRadians(0)); // Parked Scoring Pose of our robot.
     private final Pose pickup2Pose = new Pose(101, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
+    private final Pose collectLoadingZonePose = new Pose(134, 11, Math.toRadians(0));
     private final Pose collect2Pose = new Pose(134, 58, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose score2ControlPose = new Pose(88, 54); // Avoid 1 to score 2
-    private final Pose openGateControlPose = new Pose(107.7, 56); // From 2 to open Gate
-    private final Pose openGateControlPoseB = new Pose(115, 56); // From score to open gate, avoid 1
-    private final Pose openGatePose = new Pose(128, 63, Math.toRadians(0)); // Opens Gate
+    private final Pose openGateControlPose = new Pose(81, 50); // Avoid 1 to open Gate
+    private final Pose openGatePose = new Pose(127, 59, Math.toRadians(0)); // Opens Gate
     private final Pose collectGatePose = new Pose(135, 61, Math.toRadians(35)); // Collects from Gate
-    private final Pose openGatePoseB = new Pose(20.58, 59.77, Math.toRadians(147.48)); // Pre open gate MIRRORED
-    private final Pose collectGatePoseB = new Pose(15.58, 59.77, Math.toRadians(147.48)); // Collects from Gate directly with open MIRRORED
     private final Pose scoreGateControlPose = new Pose(86, 55); // Avoid gate and 1 to score Gate
     private final Pose pickup1Pose = new Pose(101, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(128, 84, Math.toRadians(0)); // Collect first set of artifacts
     private final Pose pickup3Pose = new Pose(101, 37, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(134, 37, Math.toRadians(0)); // Collect third set of artifacts
-
+    private final Pose parkPose = new Pose(120, 12, Math.toRadians(0));
     int shootGateLoop = 1;
     final double intakePathSpeed = 0.8;
     final double extraIntakeTime = 0.2;
 
-    PathChain scanObelisk, scorePreload, grabPickup2, collectPickup2, scorePickup2, openGate, collectPickupGate, openGateB, collectPickupGateB, scorePickupGateB, scorePickupGate, grabPickup1, collectPickup1, scorePickup1, grabPickup3, collectPickup3, scorePickup3;
+    PathChain scoreLoadingZone, grabLoadingZone, scanObelisk, scorePreload, grabPickup2, collectPickup2, scorePickup2, openGate, collectPickupGate, scorePickupGate, grabPickup1, collectPickup1, scorePickup1, grabPickup3, collectPickup3, scorePickup3;
 
     void buildPaths() {
         if (colorAlliance == 1) { //RED
             //NOTE: IF YOU CHANGE ANYTHING IN THIS IF STATEMENT, MAKE SURE TO CHANGE IT IN THE OTHER IF STATEMENT SO IT AFFECTS BOTH COLORS
-            parkTurretEncoderPosition = 97;
-            regularTurretEncoderPosition = 156;
+
+            regularTurretEncoderPosition = 254;
             scanObelisk = follower.pathBuilder()
                     .addPath(new BezierLine(startPose, scanPose))
                     .setLinearHeadingInterpolation(startPose.getHeading(), scanPose.getHeading())
                     .build();
             scorePreload = follower.pathBuilder()
-                    .addPath(new BezierLine(scanPose, scorePose))
-                    .setLinearHeadingInterpolation(scanPose.getHeading(), scorePose.getHeading())
+                    .addPath(new BezierLine(startPose, scorePose))
+                    .setLinearHeadingInterpolation(startPose.getHeading(), scorePose.getHeading())
                     .build();
+            grabLoadingZone = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, collectLoadingZonePose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), collectLoadingZonePose.getHeading())
+                    .build();
+           scoreLoadingZone = follower.pathBuilder()
+                   .addPath(new BezierLine(collectLoadingZonePose, scorePose))
+                   .setLinearHeadingInterpolation(collectLoadingZonePose.getHeading(), scorePose.getHeading())
+                   .build();
 
             grabPickup2 = follower.pathBuilder()
                     .addPath(new BezierLine(scorePose, pickup2Pose))
@@ -148,28 +150,15 @@ public class NoSortAuto extends OpMode{
                     .addPath(new BezierLine(pickup2Pose, collect2Pose))
                     .setTangentHeadingInterpolation()
                     .build();
-            openGate = follower.pathBuilder()
-                    .addPath(new BezierCurve(collect2Pose, openGateControlPose, openGatePose))
-                    .setLinearHeadingInterpolation(collect2Pose.getHeading(), openGatePose.getHeading())
-                    .build();
             scorePickup2 = follower.pathBuilder()
-                    .addPath(new BezierCurve(openGatePose, score2ControlPose, scorePose))
-                    .setLinearHeadingInterpolation(openGatePose.getHeading(), scorePose.getHeading())
+                    .addPath(new BezierCurve(collect2Pose, score2ControlPose, scorePose))
+                    .setLinearHeadingInterpolation(collect2Pose.getHeading(), scorePose.getHeading())
                     .build();
 
-            openGateB = follower.pathBuilder()
-                    .addPath(new BezierCurve(scorePose, openGateControlPoseB, openGatePoseB.mirror()))
-                    .setLinearHeadingInterpolation(scorePose.getHeading(), openGatePoseB.mirror().getHeading())
+            openGate = follower.pathBuilder()
+                    .addPath(new BezierCurve(scorePose, openGateControlPose, openGatePose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), openGatePose.getHeading())
                     .build();
-            collectPickupGateB = follower.pathBuilder()
-                    .addPath(new BezierLine(openGatePoseB.mirror(), collectGatePoseB.mirror()))
-                    .setLinearHeadingInterpolation(openGatePose.mirror().getHeading(), collectGatePoseB.mirror().getHeading())
-                    .build();
-            scorePickupGateB = follower.pathBuilder()
-                    .addPath(new BezierCurve(collectGatePoseB.mirror(), scoreGateControlPose, scorePose))
-                    .setLinearHeadingInterpolation(collectGatePoseB.mirror().getHeading(), scorePose.getHeading())
-                    .build();
-
             collectPickupGate = follower.pathBuilder()
                     .addPath(new BezierLine(openGatePose, collectGatePose))
                     .setLinearHeadingInterpolation(openGatePose.getHeading(), collectGatePose.getHeading())
@@ -206,18 +195,25 @@ public class NoSortAuto extends OpMode{
                     .build();
 
         } else if (colorAlliance == 2) { //BLUE
-            parkTurretEncoderPosition = -97;
-            regularTurretEncoderPosition = -156;
+            regularTurretEncoderPosition = -254;
 
             scanObelisk = follower.pathBuilder()
                     .addPath(new BezierLine(startPose.mirror(), scanPose.mirror()))
                     .setLinearHeadingInterpolation(startPose.mirror().getHeading(), scanPose.mirror().getHeading())
                     .build();
             scorePreload = follower.pathBuilder()
-                    .addPath(new BezierLine(scanPose.mirror(), scorePose.mirror()))
-                    .setLinearHeadingInterpolation(scanPose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .addPath(new BezierLine(startPose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(startPose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .build();
+            scoreLoadingZone = follower.pathBuilder()
+                    .addPath(new BezierLine(collectLoadingZonePose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(collectLoadingZonePose.mirror().getHeading(), scorePose.mirror().getHeading())
                     .build();
 
+            grabLoadingZone = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), collectLoadingZonePose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), collectLoadingZonePose.mirror().getHeading())
+                    .build();
             grabPickup2 = follower.pathBuilder()
                     .addPath(new BezierLine(scorePose.mirror(), pickup2Pose.mirror()))
                     .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup2Pose.mirror().getHeading())
@@ -226,29 +222,15 @@ public class NoSortAuto extends OpMode{
                     .addPath(new BezierLine(pickup2Pose.mirror(), collect2Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
-            openGate = follower.pathBuilder()
-                    .addPath(new BezierCurve(collect2Pose.mirror(), openGateControlPose.mirror(), openGatePose.mirror()))
-                    .setLinearHeadingInterpolation(collect2Pose.mirror().getHeading(), openGatePose.mirror().getHeading())
-                    .build();
             scorePickup2 = follower.pathBuilder()
-                    .addPath(new BezierCurve(openGatePose.mirror(), score2ControlPose.mirror(), scorePose.mirror()))
-                    .setLinearHeadingInterpolation(openGatePose.mirror().getHeading(), scorePose.mirror().getHeading())
+                    .addPath(new BezierCurve(collect2Pose.mirror(), score2ControlPose.mirror(), scorePose.mirror()))
+                    .setLinearHeadingInterpolation(collect2Pose.mirror().getHeading(), scorePose.mirror().getHeading())
                     .build();
 
-            openGateB = follower.pathBuilder()
-                    .addPath(new BezierCurve(scorePose.mirror(), openGateControlPoseB.mirror(), openGatePoseB))
-                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), openGatePoseB.getHeading())
+            openGate = follower.pathBuilder()
+                    .addPath(new BezierCurve(scorePose.mirror(), openGateControlPose.mirror(), openGatePose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), openGatePose.mirror().getHeading())
                     .build();
-            collectPickupGateB = follower.pathBuilder()
-                    .addPath(new BezierLine(openGatePoseB, collectGatePoseB))
-                    .setLinearHeadingInterpolation(openGatePose.getHeading(), collectGatePoseB.getHeading())
-                    .build();
-            scorePickupGateB = follower.pathBuilder()
-                    .addPath(new BezierCurve(collectGatePoseB, scoreGateControlPose.mirror(), scorePose.mirror()))
-                    .setLinearHeadingInterpolation(collectGatePoseB.getHeading(), scorePose.mirror().getHeading())
-                    .build();
-
-
             collectPickupGate = follower.pathBuilder()
                     .addPath(new BezierLine(openGatePose.mirror(), collectGatePose.mirror()))
                     .setLinearHeadingInterpolation(openGatePose.mirror().getHeading(), collectGatePose.mirror().getHeading())
@@ -289,14 +271,61 @@ public class NoSortAuto extends OpMode{
     public void autonomousPathUpdate() {
         switch(pathState) {
             case 0:
-                turretScore = regularTurretEncoderPosition;
+                turretScore = regularTurretEncoderPosition; //DONE: GET POSITION
                 shotCounter = 0;
-                launcherController.setGoal(closeTargetLauncherKineticState);
-                intakeMotor.setPower(INTAKING);
-                follower.followPath(scanObelisk);
-                hoodServo.setPosition(hoodScore);
+                launcherController.setGoal(closeTargetLauncherKineticState); //TODO: GET VELOCITY
+                hoodServo.setPosition(hoodScore); //DONE: GET HOOD SCORE
+                follower.followPath(scorePreload); //DONE: UPDATE SCORE PRELOAD POSES
                 sorterServo.setPosition(sorterServoOpenRight);
-                setPathState(1);
+                setPathState(100);
+                aimTurret(true);
+                break;
+            case 100:
+                if (!follower.isBusy()) {
+                    /* DONE: SHOOT BALLS */
+                    if(shotCounter < 3) {
+                        launch(true, false);
+                    }
+                    if (shotCounter >= 3) {
+                        follower.followPath(grabLoadingZone, true); //DONE: MAKE GRAB LOADING ZONE
+                        leftGateServo.setPosition(closeLeftGateServo);
+                        shooterGateServo.setPosition(closeShooterGateServo);
+                        intakeMotor.setPower(INTAKING);
+                        shotCounter = 0;
+                        setPathState(101);
+                    }
+                }
+                break;
+            case 101:
+                if(!follower.isBusy()) {
+                    intakeMotor.setPower(INTAKING);
+                    setPathState(102);
+                }
+                break;
+            case 102:
+                if(pathTimer.getElapsedTimeSeconds() > 2) {
+                    intakeMotor.setPower(STOP_SPEED);
+                    shooterGateServo.setPosition(openShooterGateServo);
+                    follower.followPath(scoreLoadingZone, true); //DONE: MAKE SCORE LOADING ZONE
+                    setPathState(100);
+                }
+                break;
+            case 103:
+                PathChain park = follower.pathBuilder()
+                        .addPath(new BezierLine(follower::getPose, parkPose)) //DONE: GET PARK POSE
+                        .setLinearHeadingInterpolation(follower.getHeading(), parkPose.getHeading())
+                        .build();
+                intakeMotor.setPower(STOP_SPEED);
+                sorterServo.setPosition(sorterServoOpenRight);
+                launcherController.setGoal(stopLauncherKineticState);
+                aimTurret(false);
+                follower.followPath(park, true);
+                setPathState(104);
+                break;
+            case 104:
+                if(!follower.isBusy()) {
+                    setPathState(-1);
+                }
                 break;
             case 1:
                 /*
@@ -360,27 +389,30 @@ public class NoSortAuto extends OpMode{
                 if (!follower.isBusy()) {
                     intakeMotor.setPower(INTAKING);
                     follower.followPath(collectPickup2, intakePathSpeed, true);
-                    setPathState(202);
+                    setPathState(4);
                 }
                 break;
-            case 202:
+            case 4:
                 if (!follower.isBusy()) {
-                    follower.followPath(openGate);
-                    intakeMotor.setPower(STOP_SPEED);
+                    follower.followPath(scorePickup2,true);
                     launcherController.setGoal(closeTargetLauncherKineticState);
                     shotCounter = 0;
                     aimTurret(true);
                     shooterGateServo.setPosition(openShooterGateServo);
-                    setPathState(203);
+                    if (shootGateLoop == -1) {
+                        setPathState(9);
+                    } else {
+                        setPathState(5);
+                    }
                 }
                 break;
-            case 203:
-                if (!follower.isBusy()) {
-                    follower.followPath(scorePickup2);
-                    setPathState(204);
+            case 5:
+                if (pathTimer.getElapsedTimeSeconds() > extraIntakeTime) {
+                    intakeMotor.setPower(STOP_SPEED);
+                    setPathState(6);
                 }
                 break;
-            case 204:
+            case 6:
                 if (!follower.isBusy()) {
                     if (shotCounter < 3) {
                         launch(true, false);
@@ -388,35 +420,28 @@ public class NoSortAuto extends OpMode{
                         intakeMotor.setPower(INTAKING);
                         leftGateServo.setPosition(closeLeftGateServo);
                         shooterGateServo.setPosition(closeShooterGateServo);
+                        follower.followPath(openGate, true);
                         aimTurret(false);
-                        if (shootGateLoop == -1) {
-                            follower.followPath(grabPickup1, true);
-                            setPathState(11);
-                        } else {
-                            follower.followPath(openGateB,true);
-                            launcherController.setGoal(closeTargetLauncherKineticState);
-                            shotCounter = 0;
-                            aimTurret(true);
-                            shooterGateServo.setPosition(openShooterGateServo);
-                            setPathState(5);
-                        }
+                        setPathState(7);
                     }
                 }
-
-            //TODO: CHECK IF OPENING GATE CODE WORKS
-            case 5:
+                break;
+            case 7:
                 if (!follower.isBusy()) {
-                    follower.followPath(collectPickupGateB);
-                    setPathState(106);
+                    follower.followPath(collectPickupGate, true);
+                    setPathState(8);
                 }
                 break;
-            case 106:
-                if (pathTimer.getElapsedTimeSeconds() > MAX_RAMP_TIME) {
-                    follower.followPath(scorePickupGateB);
-                    setPathState(107);
+            case 8:
+                if (!follower.isBusy() && pathTimer.getElapsedTimeSeconds() > MAX_RAMP_TIME) {
+                    follower.followPath(scorePickupGate, true);
+                    aimTurret(true);
+                    shooterGateServo.setPosition(openShooterGateServo);
+                    shotCounter = 0;
+                    setPathState(9);
                 }
                 break;
-            case 107:
+            case 9:
                 if (pathTimer.getElapsedTimeSeconds() > extraIntakeTime) {
                     intakeMotor.setPower(STOP_SPEED);
                     setPathState(10);
@@ -424,11 +449,11 @@ public class NoSortAuto extends OpMode{
                 break;
             case 10:
                 if (!follower.isBusy()) {
-                    if (shotCounter < 3) {
+                    if (shootGateLoop > 0) {
+                        shootGateLoop--;
+                        setPathState(6);
+                    } else if (shotCounter < 3) {
                         launch(true, false);
-                    } else if (shootGateLoop > 0) {
-                        follower.followPath(openGateB);
-                        setPathState(5);
                     } else {
                         intakeMotor.setPower(INTAKING);
                         leftGateServo.setPosition(closeLeftGateServo);
@@ -688,6 +713,10 @@ public class NoSortAuto extends OpMode{
         turretCurrentKineticState = new KineticState(turretMotor.getCurrentPosition());
         double turretPower = turretController.calculate(turretCurrentKineticState);
         turretMotor.setPower(turretPower);
+
+        if(opmodeTimer.getElapsedTimeSeconds() > 25 && opmodeTimer.getElapsedTimeSeconds() < 26) {
+            setPathState(103);
+        }
 
         // Feedback to Driver Hub for debugging
         telemetry.addData("Path State", pathState);
