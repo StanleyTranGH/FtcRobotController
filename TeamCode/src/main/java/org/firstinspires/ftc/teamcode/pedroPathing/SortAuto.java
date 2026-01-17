@@ -47,23 +47,25 @@ public class SortAuto extends OpMode{
     final double openShooterGateServo = 0.97;
 
     // turret stuff
-    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1640; // todo: find target velocity
-    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1580;
-    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1660;
+    final double CLOSE_LAUNCHER_TARGET_VELOCITY = 1380; // todo: find target velocity
+    final double CLOSE_LAUNCHER_MIN_VELOCITY = 1340;
+    final double CLOSE_LAUNCHER_MAX_VELOCITY = 1430;
     final double STOP_SPEED = 0.0;
     final double MAX_BALL_TIME = 0.1; // todo: find actual max feed time
+    final double MAX_SORT_BALL_TIME = 0.15;
     final double MAX_SCAN_TIME = 2.0;
-    final double MAX_RAMP_TIME = 3.5; // todo: find actual ramp time
-    final double firstBallXRed = 106.3;
-    final double secondBallXRed = 109.5;
-    final double thirdBallXRed = 113.7;
-    final double firstBallXBlue = 38.8;
-    final double secondBallXBlue = 33.9;
-    final double thirdBallXBlue = 28.5;
+    final double MAX_RAMP_TIME = 2.0; // todo: find actual ramp time
+    final double firstBallXRed = 105.3;
+    final double secondBallXRed = 108.5;
+    final double thirdBallXRed = 112.7;
+    final double firstBallXBlue = 39.8;
+    final double secondBallXBlue = 34.9;
+    final double thirdBallXBlue = 29.5;
     final double INTAKING = 1.0;
     final double OUTAKING = -1.0;
-    final double TRANSFER_POWER = 0.8; // todo: find the right transfer power
+    final double TRANSFER_POWER = 1.0; // todo: find the right transfer power
     int shotCounter = 0;
+    double turretScore = 156;
     public static PIDCoefficients launcherPIDCoefficients = new PIDCoefficients(0.005, 0, 0.0005);
     public static double launcherFF = 0.0003;
     public static PIDCoefficients turretPIDCoefficients = new PIDCoefficients(0.005, 0, 0.0002); // DONE: TUNE TURRET PID
@@ -102,22 +104,22 @@ public class SortAuto extends OpMode{
     private final Pose startPose = new Pose(125, 120, Math.toRadians(127)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(105, 105, Math.toRadians(127)); // Scan Obelisk
     private final Pose scorePose = new Pose(90, 90, Math.toRadians(0)); // Scoring Pose of our robot.
-    private final Pose parkScorePose = new Pose (93, 110, Math.toRadians(225)); // Parked Scoring Pose of our robot.
+    private final Pose parkScorePose = new Pose (93, 110, Math.toRadians(0)); // Parked Scoring Pose of our robot.
     private final Pose pickup2Pose = new Pose(101, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
     private final Pose collect2Pose = new Pose(127, 58, Math.toRadians(0)); // Collect second set of artifacts
-    private final Pose score2ControlPose = new Pose(103, 70); // Avoid 1 to score 2
-    private final Pose openGateControlPose = new Pose(100, 69); // Avoid 1 to open Gate
-    private final Pose openGatePose = new Pose(132, 64, Math.toRadians(0)); // Opens Gate
-    private final Pose collectGatePose = new Pose(134.6, 60); // Collects from Gate
+    private final Pose score2ControlPose = new Pose(103, 67); // Avoid 1 to score 2
+    private final Pose openGateControlPose = new Pose(81, 50); // Avoid 1 to open Gate
+    private final Pose openGatePose = new Pose(127, 59, Math.toRadians(0)); // Opens Gate
+    private final Pose collectGatePose = new Pose(135, 61, Math.toRadians(35)); // Collects from Gate
     private final Pose scoreGateControlPose = new Pose(102.5, 66.9); // Avoid gate and 1 to score Gate
     private final Pose pickup1Pose = new Pose(101, 84, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1Pose = new Pose(124, 84, Math.toRadians(0)); // Collect first set of artifacts
     private final Pose pickup3Pose = new Pose(101, 37, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
     private final Pose collect3Pose = new Pose(127, 37, Math.toRadians(0)); // Collect third set of artifacts
 
-    int shootGateLoop = 1;
+    int shootGateLoop = 0;
     final double intakePathSpeed = 0.8;
-    final double sortPathSpeed = 0.3;
+    final double sortPathSpeed = 0.35;
 
     PathChain scanObelisk, scorePreload, grabPickup2, collectPickup2, scorePickup2, openGate, collectPickupGate, scorePickupGate, grabPickup1, collectPickup1, scorePickup1, grabPickup3, collectPickup3, scorePickup3;
 
@@ -282,6 +284,7 @@ public class SortAuto extends OpMode{
                 }
                 if (pathTimer.getElapsedTimeSeconds() > MAX_SCAN_TIME && !follower.isBusy()) {
                     obeliskID = 23;
+                    detectedID = 23;
                     motif = "Couldn't Detect! Guessing PPG";
                 }
 
@@ -298,9 +301,6 @@ public class SortAuto extends OpMode{
                 if (!follower.isBusy()) {
                     if (shotCounter < 3) {
                         launch(true, false);
-                        if(shotCounter == 1) {
-                            leftGateServo.setPosition(openLeftGateServo);
-                        }
                     } else {
                         intakeMotor.setPower(INTAKING);
                         leftGateServo.setPosition(closeLeftGateServo);
@@ -319,7 +319,7 @@ public class SortAuto extends OpMode{
                         sorterServo.setPosition(sorterServoOpenRight);
                     } else {
                         follower.followPath(collectPickup2, sortPathSpeed, true);
-                        sorterServo.setPosition(sorterServoOpenRight);
+                        sorterServo.setPosition(sorterServoOpenLeft);
                     }
                     setPathState(4);
                 }
@@ -394,7 +394,7 @@ public class SortAuto extends OpMode{
                 break;
             case 8:
                 if (!follower.isBusy()) {
-                    if (shootGateLoop <= 1) {
+                    if (shootGateLoop > 0) {
                         shootGateLoop--;
                         setPathState(5);
                     } else if (shotCounter < 3) {
@@ -412,10 +412,10 @@ public class SortAuto extends OpMode{
             case 9:
                 if (!follower.isBusy()) {
                     if (detectedID == 23) {
-                        follower.followPath(collectPickup2, intakePathSpeed, true);
+                        follower.followPath(collectPickup1, intakePathSpeed, true);
                         sorterServo.setPosition(sorterServoOpenRight);
                     } else {
-                        follower.followPath(collectPickup2, sortPathSpeed, true);
+                        follower.followPath(collectPickup1, sortPathSpeed, true);
                         sorterServo.setPosition(sorterServoOpenLeft);
                     }
                     setPathState(10);
@@ -478,10 +478,10 @@ public class SortAuto extends OpMode{
             case 12:
                 if (!follower.isBusy()) {
                     if (detectedID == 21) {
-                        follower.followPath(collectPickup2, intakePathSpeed, true);
+                        follower.followPath(collectPickup3, intakePathSpeed, true);
                         sorterServo.setPosition(sorterServoOpenRight);
                     } else {
-                        follower.followPath(collectPickup2, sortPathSpeed, true);
+                        follower.followPath(collectPickup3, sortPathSpeed, true);
                         sorterServo.setPosition(sorterServoOpenLeft);
                     }
                     setPathState(13);
@@ -553,7 +553,6 @@ public class SortAuto extends OpMode{
         ballTimer = new Timer();
 
         launchState = LaunchState.IDLE;
-        launch(false, false);
 
         follower = Constants.createFollower(hardwareMap);
 
@@ -565,7 +564,7 @@ public class SortAuto extends OpMode{
         launcher1 = hardwareMap.get(DcMotorEx.class, "launcher1");
         launcher2 = hardwareMap.get(DcMotorEx.class, "launcher2");
         sorterServo = hardwareMap.get(Servo.class, "sorterServo");
-        leftGateServo = hardwareMap.get(Servo.class, "leftGateServo");
+        leftGateServo = hardwareMap.get(Servo.class, "gateServo");
         shooterGateServo = hardwareMap.get(Servo.class, "shooterGateServo");
         hoodServo = hardwareMap.get(Servo.class, "hoodServo");
         turretMotor = hardwareMap.get(DcMotorEx.class, "turretMotor");
@@ -590,6 +589,8 @@ public class SortAuto extends OpMode{
         launcher1.setPower(STOP_SPEED);
         launcher2.setPower(STOP_SPEED);
         launcherController.setGoal(stopLauncherKineticState);
+
+        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
         shooterGateServo.setPosition(closeShooterGateServo);
         sorterServo.setPosition(sorterServoOpenRight);
@@ -632,21 +633,21 @@ public class SortAuto extends OpMode{
                 shootGateLoop++;
             } else if (gamepad1.dpadDownWasPressed()) {
                 shootGateLoop--;
-            } else if (shootGateLoop <= 0) {
-                shootGateLoop = 1;
+            } else if (shootGateLoop < 0) {
+                shootGateLoop = 0;
             }
 
-            if (shootGateLoop == 2) {
+            if (shootGateLoop == 1) {
                 telemetry.addData("Selected Ball Count", "18 ball auto");
-            } else if (shootGateLoop == 1) {
+            } else if (shootGateLoop == 0) {
                 telemetry.addData("Selected Ball Count", "15 ball auto");
-            } else if (shootGateLoop == 3) {
+            } else if (shootGateLoop == 2) {
                 telemetry.addData("Selected Ball Count", "21 ball auto");
-            } else if (shootGateLoop == 4) {
+            } else if (shootGateLoop == 3) {
                 telemetry.addData("Selected Ball Count", "24 ball auto");
-            } else if (shootGateLoop >= 5) {
+            } else if (shootGateLoop >= 4) {
                 telemetry.addData("Selected Ball Count", "dawg is ts even possible, turn ts down bruh i'm gonna run out of if statements");
-                shootGateLoop = 5;
+                shootGateLoop = 3;
             }
 
             if (gamepad1.rightBumperWasPressed()) {
@@ -709,6 +710,7 @@ public class SortAuto extends OpMode{
         telemetry.addData("Detected ID", detectedID);
         telemetry.addData("Detected Motif", motif);
         telemetry.addData("Launcher Velocity", launcher1.getVelocity());
+        telemetry.addData("shot counter", shotCounter);
         telemetry.update();
     }
 
@@ -720,7 +722,7 @@ public class SortAuto extends OpMode{
 
     void aimTurret(boolean aimAtGoal) {
         if (aimAtGoal) {
-            turretTargetPosition = calculateTurretPosition(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
+            turretTargetPosition = turretScore;
             turretTargetKineticState = new KineticState(turretTargetPosition);
         } else {
             turretTargetKineticState = turretRestKineticState;
@@ -749,31 +751,26 @@ public class SortAuto extends OpMode{
             case LAUNCHING:
                 intakeMotor.setPower(TRANSFER_POWER);
                 ballTimer.resetTimer();
+                launchState = LaunchState.LAUNCHED;
                 break;
 
             case LAUNCHED:
-                if (shotCounter >= 2) {
+                if (shotCounter > 2) {
                     // penultimate shot, in the process of third
-                    shotCounter = 0; // just reset since we're in last ball
                     // go back to no shooting mode
                     intakeMotor.setPower(STOP_SPEED);
                     ballTimer.resetTimer();
                     launchState = LaunchState.IDLE;
-                } else if (openGate) {
-                    // waiting for ball to intake
-                    if (ballTimer.getElapsedTimeSeconds() > MAX_BALL_TIME) {
-                        // past the usual time to shoot, assuming shot is completed
-                        shotCounter++;
-                        ballTimer.resetTimer();
-                        launchState = LaunchState.IDLE;
-                    }
-
+                } else if (openGate && ballTimer.getElapsedTimeSeconds() > MAX_SORT_BALL_TIME) {
+                    // past the usual time to shoot, assuming shot is completed
+                    shotCounter++;
+                    ballTimer.resetTimer();
+                    launchState = LaunchState.IDLE;
                 } else if (ballTimer.getElapsedTimeSeconds() > MAX_BALL_TIME) {
                     // past the usual time to shoot, assuming shot is completed
                     shotCounter++;
                     ballTimer.resetTimer();
                     launchState = LaunchState.IDLE;
-
                 }
                 break;
         }
