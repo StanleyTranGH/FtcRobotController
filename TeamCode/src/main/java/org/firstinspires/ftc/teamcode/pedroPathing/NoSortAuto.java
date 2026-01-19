@@ -101,16 +101,16 @@ public class NoSortAuto extends OpMode{
 
     // pedropathing
     private int pathState; //DONE: use visualizer find poses
-    private final Pose startPose = new Pose(125, 120, Math.toRadians(127)); // Start Pose of our robot.
+    private Pose startPose = new Pose(125, 120, Math.toRadians(127)); // Start Pose of our robot.
     private final Pose scanPose = new Pose(105, 105, Math.toRadians(127)); // Scan Obelisk
     private final Pose scorePose = new Pose(90, 90, Math.toRadians(0)); // Scoring Pose of our robot.
     private final Pose parkScorePose = new Pose (93, 110, Math.toRadians(0)); // Parked Scoring Pose of our robot.
     private final Pose pickup2Pose = new Pose(101, 60, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
     private final Pose collect2Pose = new Pose(134, 58, Math.toRadians(0)); // Collect second set of artifacts
     private final Pose score2ControlPose = new Pose(88, 54); // Avoid 1 to score 2
-    private final Pose openGateControlPose = new Pose(107.7, 56); // From 2 to open Gate
+    private final Pose openGateControlPose = new Pose(107.7, 53); // From 2 to open Gate
     private final Pose openGateControlPoseB = new Pose(115, 56); // From score to open gate, avoid 1
-    private final Pose openGatePose = new Pose(128, 63, Math.toRadians(0)); // Opens Gate
+    private final Pose openGatePose = new Pose(128, 66, Math.toRadians(0)); // Opens Gate
     private final Pose collectGatePose = new Pose(135, 61, Math.toRadians(35)); // Collects from Gate
     private final Pose openGatePoseB = new Pose(20.58, 59.77, Math.toRadians(147.48)); // Pre open gate MIRRORED
     private final Pose collectGatePoseB = new Pose(15.58, 59.77, Math.toRadians(147.48)); // Collects from Gate directly with open MIRRORED
@@ -206,8 +206,9 @@ public class NoSortAuto extends OpMode{
                     .build();
 
         } else if (colorAlliance == 2) { //BLUE
-            parkTurretEncoderPosition = -97;
-            regularTurretEncoderPosition = -156;
+            startPose = startPose.mirror();
+            parkTurretEncoderPosition = -110;
+            regularTurretEncoderPosition = -170;
 
             scanObelisk = follower.pathBuilder()
                     .addPath(new BezierLine(startPose.mirror(), scanPose.mirror()))
@@ -293,7 +294,7 @@ public class NoSortAuto extends OpMode{
                 shotCounter = 0;
                 launcherController.setGoal(closeTargetLauncherKineticState);
                 intakeMotor.setPower(INTAKING);
-                follower.followPath(scanObelisk);
+                follower.followPath(scanObelisk, true);
                 hoodServo.setPosition(hoodScore);
                 sorterServo.setPosition(sorterServoOpenRight);
                 setPathState(1);
@@ -334,7 +335,7 @@ public class NoSortAuto extends OpMode{
                 motif = "this motif doesn't even scan bru";
 
                 if (obeliskID != 0) {
-                    follower.followPath(scorePreload);
+                    follower.followPath(scorePreload, true);
                     launcherController.setGoal(closeTargetLauncherKineticState);
                     intakeMotor.setPower(STOP_SPEED);
                     aimTurret(true);
@@ -365,7 +366,7 @@ public class NoSortAuto extends OpMode{
                 break;
             case 202:
                 if (!follower.isBusy()) {
-                    follower.followPath(openGate);
+                    follower.followPath(openGate, true);
                     intakeMotor.setPower(STOP_SPEED);
                     launcherController.setGoal(closeTargetLauncherKineticState);
                     shotCounter = 0;
@@ -376,7 +377,7 @@ public class NoSortAuto extends OpMode{
                 break;
             case 203:
                 if (!follower.isBusy()) {
-                    follower.followPath(scorePickup2);
+                    follower.followPath(scorePickup2, true);
                     setPathState(204);
                 }
                 break;
@@ -394,25 +395,25 @@ public class NoSortAuto extends OpMode{
                             setPathState(11);
                         } else {
                             follower.followPath(openGateB,true);
-                            launcherController.setGoal(closeTargetLauncherKineticState);
-                            shotCounter = 0;
-                            aimTurret(true);
-                            shooterGateServo.setPosition(openShooterGateServo);
                             setPathState(5);
                         }
                     }
                 }
-
-            //TODO: CHECK IF OPENING GATE CODE WORKS
+            break;
+                //TODO: CHECK IF OPENING GATE CODE WORKS
             case 5:
                 if (!follower.isBusy()) {
-                    follower.followPath(collectPickupGateB);
+                    follower.followPath(collectPickupGateB, true);
                     setPathState(106);
                 }
                 break;
             case 106:
                 if (pathTimer.getElapsedTimeSeconds() > MAX_RAMP_TIME) {
-                    follower.followPath(scorePickupGateB);
+                    follower.followPath(scorePickupGateB, true);
+                    launcherController.setGoal(closeTargetLauncherKineticState);
+                    shotCounter = 0;
+                    aimTurret(true);
+                    shooterGateServo.setPosition(openShooterGateServo);
                     setPathState(107);
                 }
                 break;
@@ -427,7 +428,12 @@ public class NoSortAuto extends OpMode{
                     if (shotCounter < 3) {
                         launch(true, false);
                     } else if (shootGateLoop > 0) {
-                        follower.followPath(openGateB);
+                        follower.followPath(openGateB, true);
+                        intakeMotor.setPower(INTAKING);
+                        leftGateServo.setPosition(closeLeftGateServo);
+                        shooterGateServo.setPosition(closeShooterGateServo);
+                        aimTurret(false);
+                        shootGateLoop--;
                         setPathState(5);
                     } else {
                         intakeMotor.setPower(INTAKING);
@@ -463,7 +469,7 @@ public class NoSortAuto extends OpMode{
             case 14:
                 if (!follower.isBusy()) {
                     if (shotCounter < 3) {
-                     launch(true, false);
+                        launch(true, false);
                     } else {
                         intakeMotor.setPower(INTAKING);
                         leftGateServo.setPosition(closeLeftGateServo);
