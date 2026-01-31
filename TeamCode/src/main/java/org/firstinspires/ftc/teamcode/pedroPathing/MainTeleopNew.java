@@ -384,7 +384,7 @@ public class MainTeleopNew extends OpMode {
         telemetry.addData("Distance", distanceFromGoal);
 
         telemetry.addLine("-------- LAUNCHER --------");
-        telemetry.addData("Launch State", launchState);
+        telemetry.addData("Launch State", gamepad2.right_bumper);
         telemetry.addData("Launcher Velocity", launcher1.getVelocity());
         telemetry.addData("Target Velocity", TARGET_VELOCITY);
         telemetry.addData("Launcher Power", launcher1.getPower());
