@@ -51,9 +51,11 @@ public class SortAuto extends OpMode{
     final double CLOSE_LAUNCHER_MIN_VELOCITY = 1340;
     final double CLOSE_LAUNCHER_MAX_VELOCITY = 1430;
     final double STOP_SPEED = 0.0;
-    final double MAX_BALL_TIME = 3.0; // todo: find actual max feed time
+    final double MAX_BALL_TIME = 1.0; // todo: find actual max feed time
     final double ONE_BALL_TIME = 0.4;
+    final double ONE_BALL_TIME_B = 1.3;
     final double TWO_BALL_TIME = 0.9;
+    final double TWO_BALL_TIME_B = 1.3;
     final double MAX_SCAN_TIME = 2.0;
     final double MAX_RAMP_TIME = 2.0; // todo: find actual ramp time
     final double firstBallXRed = 109.1 ; //was 105.3
@@ -124,7 +126,7 @@ public class SortAuto extends OpMode{
     final double intakePathSpeed = 0.8;
     final double sortPathSpeed = 0.30; //was 0.35
 
-    PathChain scanObelisk, scorePreload, directScorePreload, grabPickup2, collectPickup2, scorePickup2, openGate, collectPickupGate, openGateB, collectPickupGateB, scorePickupGateB, scorePickupGate, grabPickup1, collectPickup1, scorePickup1, grabPickup3, collectPickup3, scorePickup3;
+    PathChain scanObelisk, scorePreload, directScorePreload, grabPickup2, collectPickup2, collectPickup2Chain, scorePickup2, openGate, collectPickupGate, openGateB, collectPickupGateB, scorePickupGateB, scorePickupGate, grabPickup1, collectPickup1, collectPickup1Chain, scorePickup1, grabPickup3, collectPickup3, collectPickup3Chain,  scorePickup3;
     void buildPaths() {
         if (colorAlliance == 1) { //RED
             //NOTE: IF YOU CHANGE ANYTHING IN THIS IF STATEMENT, MAKE SURE TO CHANGE IT IN THE OTHER IF STATEMENT SO IT AFFECTS BOTH COLORS
@@ -151,6 +153,14 @@ public class SortAuto extends OpMode{
                     .addPath(new BezierLine(pickup2Pose, collect2Pose))
                     .setTangentHeadingInterpolation()
                     .build();
+
+            collectPickup2Chain = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, pickup2Pose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), pickup2Pose.getHeading())
+                    .addPath(new BezierLine(pickup2Pose, collect2Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
             openGate = follower.pathBuilder()
                     .addPath(new BezierCurve(collect2Pose, openGateControlPose, openGatePose))
                     .setLinearHeadingInterpolation(collect2Pose.getHeading(), openGatePose.getHeading())
@@ -190,6 +200,14 @@ public class SortAuto extends OpMode{
                     .addPath(new BezierLine(pickup1Pose, collect1Pose))
                     .setTangentHeadingInterpolation()
                     .build();
+
+            collectPickup1Chain = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, pickup1Pose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), pickup1Pose.getHeading())
+                    .addPath(new BezierLine(pickup1Pose, collect1Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
             scorePickup1 = follower.pathBuilder()
                     .addPath(new BezierLine(collect1Pose, scorePose))
                     .setLinearHeadingInterpolation(collect1Pose.getHeading(), scorePose.getHeading())
@@ -203,6 +221,14 @@ public class SortAuto extends OpMode{
                     .addPath(new BezierLine(pickup3Pose, collect3Pose))
                     .setTangentHeadingInterpolation()
                     .build();
+
+            collectPickup3Chain = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose, pickup3Pose))
+                    .setLinearHeadingInterpolation(scorePose.getHeading(), pickup3Pose.getHeading())
+                    .addPath(new BezierLine(pickup3Pose, collect3Pose))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
             scorePickup3 = follower.pathBuilder()
                     .addPath(new BezierLine(collect3Pose, parkScorePose))
                     .setLinearHeadingInterpolation(collect3Pose.getHeading(), parkScorePose.getHeading())
@@ -234,6 +260,14 @@ public class SortAuto extends OpMode{
                     .addPath(new BezierLine(pickup2Pose.mirror(), collect2Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
+
+            collectPickup2Chain = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), pickup2Pose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup2Pose.mirror().getHeading())
+                    .addPath(new BezierLine(pickup2Pose.mirror(), collect2Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
             openGate = follower.pathBuilder()
                     .addPath(new BezierCurve(collect2Pose.mirror(), openGateControlPose.mirror(), openGatePose.mirror()))
                     .setLinearHeadingInterpolation(collect2Pose.mirror().getHeading(), openGatePose.mirror().getHeading())
@@ -274,6 +308,15 @@ public class SortAuto extends OpMode{
                     .addPath(new BezierLine(pickup1Pose.mirror(), collect1Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
+
+            collectPickup1Chain = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), pickup1Pose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup1Pose.mirror().getHeading())
+                    .addPath(new BezierLine(pickup1Pose.mirror(), collect1Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
+
             scorePickup1 = follower.pathBuilder()
                     .addPath(new BezierLine(collect1Pose.mirror(), scorePose.mirror()))
                     .setLinearHeadingInterpolation(collect1Pose.mirror().getHeading(), scorePose.mirror().getHeading())
@@ -287,6 +330,14 @@ public class SortAuto extends OpMode{
                     .addPath(new BezierLine(pickup3Pose.mirror(), collect3Pose.mirror()))
                     .setTangentHeadingInterpolation()
                     .build();
+
+            collectPickup3Chain = follower.pathBuilder()
+                    .addPath(new BezierLine(scorePose.mirror(), pickup3Pose.mirror()))
+                    .setLinearHeadingInterpolation(scorePose.mirror().getHeading(), pickup3Pose.mirror().getHeading())
+                    .addPath(new BezierLine(pickup3Pose.mirror(), collect3Pose.mirror()))
+                    .setTangentHeadingInterpolation()
+                    .build();
+
             scorePickup3 = follower.pathBuilder()
                     .addPath(new BezierLine(collect3Pose.mirror(), parkScorePose.mirror()))
                     .setLinearHeadingInterpolation(collect3Pose.mirror().getHeading(), parkScorePose.mirror().getHeading())
@@ -775,12 +826,12 @@ public class SortAuto extends OpMode{
                     launchState = LaunchState.LAUNCHED;
                 } else if (openGate == 1 && ballTimer.getElapsedTimeSeconds() > ONE_BALL_TIME) {
                     leftGateServo.setPosition(openLeftGateServo);
-                    if (ballTimer.getElapsedTimeSeconds() > TWO_BALL_TIME) {
+                    if (ballTimer.getElapsedTimeSeconds() > TWO_BALL_TIME_B) {
                         launchState = LaunchState.LAUNCHED;
                     }
                 } else if (openGate == 2 && ballTimer.getElapsedTimeSeconds() > TWO_BALL_TIME) {
                     leftGateServo.setPosition(openLeftGateServo);
-                    if (ballTimer.getElapsedTimeSeconds() > ONE_BALL_TIME) {
+                    if (ballTimer.getElapsedTimeSeconds() > ONE_BALL_TIME_B) {
                         launchState = LaunchState.LAUNCHED;
                     }
                 }
