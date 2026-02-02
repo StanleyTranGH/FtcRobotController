@@ -63,6 +63,7 @@ public class MainTeleopNew extends OpMode {
     final double transferPower = 1.0; // DONE: TEST BEST POWER FOR TRANSFER
     final double restPower = 0.0;
     static double redGoalX = 142;
+    double newDistanceFromGoal, newGoalX, newGoalY;
 
     /* Servo Positions */
     final double sorterServoOpenRight = 0.7; // DONE: SET SORTER SERVO POSITIONS
@@ -75,6 +76,8 @@ public class MainTeleopNew extends OpMode {
     /* Turret Stuff */
     double turretTargetPosition = 0.0;
     double hoodTargetPosition = 0.0;
+    double turretSOTMTargetPosition = 0.0;
+    double hoodSOTMTargetPosition = 0.0;
     final double turretRestPosition = 0.0;
     final double hoodRestPosition = 0.0;
     ControlSystem turretController;
@@ -110,7 +113,7 @@ public class MainTeleopNew extends OpMode {
     @Override
     public void init() {
         launchState = LaunchState.IDLE;
-        shootState = ShootState.INTAKING;
+        shootState = ShootState.REST_INTAKING;
 
         // Initialize Hardware
         intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
@@ -280,23 +283,16 @@ public class MainTeleopNew extends OpMode {
 
         /* Set Shooter Velocity */
         // DONE: CHECK IF follower.getHeading() IS IN RADIANS OR DEGREES (its in radians)
-        distanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
-        TARGET_VELOCITY = calculateVelocity(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
-        MIN_VELOCITY = TARGET_VELOCITY - 50;
-        MAX_VELOCITY = TARGET_VELOCITY + 50;
-        targetLauncherKineticState = new KineticState(0, TARGET_VELOCITY);
+        distanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading(), (teleopColorAlliance == 1) ? 142 : 2, 142);
 
         /* DRIVER 2 GAMEPAD SHOOTING CODE */
         if (gamepad2.yWasPressed()) {
             // DONE: IMPLEMENT SHOOT MODE
             shootState = ShootState.SHOOTING;
-            launcherController.setGoal(targetLauncherKineticState);
-        } else if (gamepad2.bWasPressed()) { // stop flywheel
+        } else if (gamepad2.bWasPressed()) {
             shootState = ShootState.INTAKING;
-            launcherController.setGoal(targetLauncherKineticState);
-        } else if (gamepad2.aWasPressed()) {
+        } else if (gamepad2.aWasPressed()) {// stop flywheel
             shootState = ShootState.REST_INTAKING;
-            launcherController.setGoal(stopLauncherKineticState);
         }
 
         /* DRIVER 2 SORTER CODE */
@@ -310,22 +306,51 @@ public class MainTeleopNew extends OpMode {
         if(shootState == ShootState.SHOOTING) {
             intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
-            launcherController.setGoal(targetLauncherKineticState);
-
-            turretTargetPosition = calculateTurretPosition(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
-            hoodTargetPosition = calculateHoodPosition(follower.getPose().getX(), follower.getPose().getY());
-
-            turretTargetKineticState = new KineticState(turretTargetPosition, 0);
-            hoodServo.setPosition(hoodTargetPosition);
+            hoodTargetPosition = calculateHoodPosition(follower.getPose().getX(), follower.getPose().getY(), distanceFromGoal);
 
             shooterGateServo.setPosition(openShooterGateServo);
         } else {
             // DONE: ALSO IMPLEMENT TURRET PID AND RUNNING TO POSITION CODE HERE
-            turretTargetKineticState = turretRestKineticState;
-            hoodServo.setPosition(hoodRestPosition);
 
             shooterGateServo.setPosition(closeShooterGateServo);
         }
+
+        /* Set shooter power to calculated power */
+
+        if(shootState == ShootState.SHOOTING) {
+            if(gamepad2.right_bumper) {
+                intakeMotor.setPower(transferPower);
+            } else {
+                intakeMotor.setPower(restPower);
+            }
+        }
+
+        // SOTM
+
+        for (int i = 0; i < 5; i++) {
+            calculateSOTM();
+        }
+
+        TARGET_VELOCITY = calculateVelocity();
+        MIN_VELOCITY = TARGET_VELOCITY - 50;
+        MAX_VELOCITY = TARGET_VELOCITY + 50;
+        targetLauncherKineticState = new KineticState(0, TARGET_VELOCITY);
+
+        if(shootState == ShootState.SHOOTING) {
+            turretTargetPosition = calculateTurretPosition(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading());
+            turretTargetKineticState = new KineticState(turretTargetPosition, 0);
+            launcherController.setGoal(targetLauncherKineticState);
+            hoodServo.setPosition(hoodTargetPosition);
+        } else if(shootState == ShootState.INTAKING) {
+            launcherController.setGoal(targetLauncherKineticState);
+            turretTargetKineticState = turretRestKineticState;
+            hoodServo.setPosition(hoodRestPosition);
+        } else { // REST INTAKING
+            turretTargetKineticState = turretRestKineticState;
+            launcherController.setGoal(stopLauncherKineticState);
+            hoodServo.setPosition(hoodRestPosition);
+        }
+
         turretController.setGoal(turretTargetKineticState);
         turretCurrentKineticState = new KineticState(turretMotor.getCurrentPosition(), turretMotor.getVelocity());
         double turretPower = turretController.calculate(turretCurrentKineticState);
@@ -335,7 +360,6 @@ public class MainTeleopNew extends OpMode {
                 )
         );
 
-        /* Set shooter power to calculated power */
         currentLauncherKineticState = new KineticState(launcher1.getCurrentPosition(), launcher1.getVelocity());
         double launcherPower = launcherController.calculate(currentLauncherKineticState);
         if(shootState == ShootState.SHOOTING || shootState == ShootState.INTAKING) {
@@ -346,34 +370,6 @@ public class MainTeleopNew extends OpMode {
             launcher2.setPower(STOP_SPEED);
         }
 
-        if(shootState == ShootState.SHOOTING) {
-            if(gamepad2.right_bumper) {
-                intakeMotor.setPower(transferPower);
-            } else {
-                intakeMotor.setPower(restPower);
-            }
-        }
-
-        // Lift Mode
-        /*
-        if (gamepad1.bWasPressed()) {
-            // DONE: Set to a different less accessible button
-            // DONE: Implement lift-mode code here (DOING LATER)
-            follower.followPath(parkChain.get());
-            automatedDrive = true;
-        }
-        //Stop automated following if the follower is done
-        if (automatedDrive && (gamepad1.bWasPressed() || !follower.isBusy())) {
-            follower.startTeleopDrive();
-            automatedDrive = false;
-        }
-
-        //Slow Mode
-        if (gamepad1.rightBumperWasPressed()) {
-            slowMode = !slowMode;
-        }
-         */
-
         if(gamepad1.startWasPressed()) {
             robotCentricOn = !robotCentricOn;
         }
@@ -382,6 +378,7 @@ public class MainTeleopNew extends OpMode {
         telemetry.addData("Position", follower.getPose());
         telemetry.addData("Automated Drive On?", automatedDrive);
         telemetry.addData("Distance", distanceFromGoal);
+        telemetry.addData("New Distance", newDistanceFromGoal);
 
         telemetry.addLine("-------- LAUNCHER --------");
         telemetry.addData("Launch State", gamepad2.right_bumper);
@@ -398,10 +395,8 @@ public class MainTeleopNew extends OpMode {
         telemetry.addData("Turret Current Position", turretMotor.getCurrentPosition());
         telemetry.addData("Hood Servo Position", hoodTargetPosition);
     }
-    double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingRad) {
+    double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingRad, double goalX, double goalY) {
         // Goal coordinates
-        double goalX = (teleopColorAlliance == 1) ? 142 : 2;
-        double goalY = 142;
 
         // Shooter offset relative to robot center
         double shooterOffset = -2.0; // 2 inches BEHIND robot center (negative = behind)
@@ -417,13 +412,13 @@ public class MainTeleopNew extends OpMode {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    double calculateVelocity (double currentX, double currentY, double headingDeg) {
-        double targetVelocity = 296.51988 * Math.sin(0.0304951 * distanceFromGoal + 3.07825) + 1658.50983;
+    double calculateVelocity () {
+        // y=278.19142\cdot\sin\left(0.0311962x+3.05712\right)+1639.55011
+        double targetVelocity = 278.19142 * Math.sin(0.0311962 * newDistanceFromGoal + 3.05712) + 1639.55011;
 
         return Range.clip(targetVelocity, 0, 2420);
     }
-    double calculateHoodPosition (double currentX, double currentY) {
-        double targetDistance = distanceFromGoal;
+    double calculateHoodPosition (double currentX, double currentY, double targetDistance) {
 
         // Scale distance to the proper
         // double servoPosition = -5.339981 + 0.3090759*targetDistance - 0.00610722*Math.pow(targetDistance, 2) + 0.00004666887*Math.pow(targetDistance, 3) - 1.405935 * Math.pow(10, -8) *Math.pow(targetDistance, 4) - 9.799439 * Math.pow(10, -10) * Math.pow(targetDistance, 5);
@@ -436,8 +431,8 @@ public class MainTeleopNew extends OpMode {
     double calculateTurretPosition(double currentX, double currentY, double robotHeadingRad) {
 
         // ===== FIELD GOAL =====
-        double goalX = (teleopColorAlliance == 1) ? redGoalX : 2;
-        double goalY = 142;
+        double goalX = newGoalX;
+        double goalY = newGoalY;
 
         // ===== SHOOTER OFFSET (behind robot center) =====
         double shooterOffset = -2.5; // inches
@@ -472,5 +467,18 @@ public class MainTeleopNew extends OpMode {
     public void recalibratePoseLimelight() {
 
     }
+    public void calculateSOTM() {
+        double currentHoodAngle = hoodTargetPosition;
 
+        double originalGoalX = (teleopColorAlliance == 1) ? redGoalX : 2;
+        double originalGoalY = 142;
+
+        double averageShotTime = (3.65598 * currentHoodAngle * currentHoodAngle) + (1.88789 * currentHoodAngle) + 0.710821; //ADD REGRESSION HERE
+
+        newGoalX = -follower.getVelocity().getXComponent() * averageShotTime + originalGoalX;
+        newGoalY = -follower.getVelocity().getYComponent() * averageShotTime + originalGoalY;
+
+        newDistanceFromGoal = calculateRobotDistanceFromGoal(follower.getPose().getX(), follower.getPose().getY(), follower.getHeading(), newGoalX, newGoalY);
+        hoodTargetPosition = calculateHoodPosition(follower.getPose().getX(), follower.getPose().getY(), newDistanceFromGoal);
+    }
 }
