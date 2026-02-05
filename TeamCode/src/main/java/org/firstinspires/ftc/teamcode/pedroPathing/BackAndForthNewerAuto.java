@@ -153,7 +153,43 @@ public class BackAndForthNewerAuto extends OpMode {
 
             turretScore = -254; // todo: find real turretScore
 
+            shootPreload = follower.pathBuilder()
+                    .addPath(new BezierLine(startPose.mirror(), shootPose.mirror()))
+                    .setLinearHeadingInterpolation(startPose.mirror().getHeading(), shootPose.mirror().getHeading())
+                    .build();
 
+            collectPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(shootPose.mirror(), collectPickup1Pose.mirror()))
+                    .setLinearHeadingInterpolation(shootPose.mirror().getHeading(), collectPickup1Pose.mirror().getHeading())
+                    .addPath(new BezierLine(collectPickup1Pose.mirror(), collectPickup1ReloadPose.mirror()))
+                    .setLinearHeadingInterpolation(collectPickup1Pose.mirror().getHeading(), collectPickup1ReloadPose.mirror().getHeading())
+                    .addPath(new BezierLine(collectPickup1ReloadPose.mirror(), collectPickup1BPose.mirror()))
+                    .setLinearHeadingInterpolation(collectPickup1ReloadPose.mirror().getHeading(), collectPickup1BPose.mirror().getHeading())
+                    .build();
+            shootPickup1 = follower.pathBuilder()
+                    .addPath(new BezierLine(collectPickup1BPose.mirror(), shootPose.mirror()))
+                    .setLinearHeadingInterpolation(collectPickup1BPose.mirror().getHeading(), shootPose.mirror().getHeading())
+                    .build();
+
+            collectExtra = follower.pathBuilder()
+                    .addPath(new BezierLine(shootPose.mirror(), collectExtraAPose.mirror()))
+                    .setLinearHeadingInterpolation(shootPose.mirror().getHeading(), collectExtraAPose.mirror().getHeading())
+                    .addPath(new BezierLine(collectExtraAPose.mirror(), collectExtraReloadPose.mirror()))
+                    .setLinearHeadingInterpolation(collectExtraAPose.mirror().getHeading(), collectExtraReloadPose.mirror().getHeading())
+                    .addPath(new BezierLine(collectExtraReloadPose.mirror(), collectExtraBPose.mirror()))
+                    .setLinearHeadingInterpolation(collectExtraReloadPose.mirror().getHeading(), collectExtraBPose.mirror().getHeading())
+                    .build();
+            shootExtra = follower.pathBuilder()
+                    .addPath(new BezierLine(collectExtraBPose.mirror(), shootPose.mirror()))
+                    .setLinearHeadingInterpolation(collectExtraBPose.mirror().getHeading(), shootPose.mirror().getHeading())
+                    .build();
+
+            if (!prioritizePark) {
+                park = follower.pathBuilder()
+                        .addPath(new BezierLine(shootPose.mirror(), parkPose.mirror()))
+                        .setLinearHeadingInterpolation(shootPose.mirror().getHeading(), parkPose.mirror().getHeading())
+                        .build();
+            }
         }
     }
 
@@ -388,11 +424,11 @@ public class BackAndForthNewerAuto extends OpMode {
 
         if (prioritizePark) {
             if (opmodeTimer.getElapsedTimeSeconds() > 26 && opmodeTimer.getElapsedTimeSeconds() < 27) {
-                setPathState(1001);
+                setPathState(1000);
             }
         } else {
             if (opmodeTimer.getElapsedTimeSeconds() > 24 && opmodeTimer.getElapsedTimeSeconds() < 25) {
-                setPathState(1001);
+                setPathState(1000);
             }
         }
 
