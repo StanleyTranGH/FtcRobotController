@@ -94,7 +94,7 @@ public class BackAndForthNewerAuto extends OpMode {
 
     // pedropathing
     private int pathState; // todo: use visualizer find poses
-    private Pose startPose = new Pose(96.6, 31.4, Math.toRadians(0)); // start pose
+    private Pose startPose = new Pose(80.7, 9, Math.toRadians(0)); // start pose
     private Pose shootPose = new Pose(87, 16, Math.toRadians(0)); // shoot pose
     private final Pose collectPickup1Pose = new Pose(133, 10, Math.toRadians(0)); // collect 1st set of artifacts in loading zone
     private final Pose collectPickup1ReloadPose = new Pose(125, 12, Math.toRadians(0)); // ensure we actually intake them, i saw other teams do ts
@@ -201,6 +201,7 @@ public class BackAndForthNewerAuto extends OpMode {
                 sorterServo.setPosition(sorterServoOpenRight);
                 launch(0, -1);
                 follower.followPath(shootPreload);
+                setPathState(1);
                 break;
             case 1:
                 if (!follower.isBusy()) {

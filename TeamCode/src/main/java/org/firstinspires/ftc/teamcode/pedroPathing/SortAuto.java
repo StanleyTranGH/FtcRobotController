@@ -53,8 +53,8 @@ public class SortAuto extends OpMode{
     final double STOP_SPEED = 0.0;
     final double MAX_BALL_TIME = 1.0; // todo: find actual max feed time
     final double ONE_BALL_TIME = 0.4;
-    final double ONE_BALL_TIME_B = 1.3;
-    final double TWO_BALL_TIME = 0.9;
+    final double ONE_BALL_TIME_B = 1.2;
+    final double TWO_BALL_TIME = 0.7;
     final double TWO_BALL_TIME_B = 1.3;
     final double MAX_SCAN_TIME = 2.0;
     final double MAX_RAMP_TIME = 2.0; // todo: find actual ramp time
@@ -123,8 +123,8 @@ public class SortAuto extends OpMode{
     private final Pose collect3Pose = new Pose(134, 35, Math.toRadians(0)); // Collect third set of artifacts
 
     int shootGateLoop = 0;
-    final double intakePathSpeed = 0.8;
-    final double sortPathSpeed = 0.30; //was 0.35
+    final double intakePathSpeed = 1.0;
+    final double sortPathSpeed = 0.40;
 
     PathChain scanObelisk, scorePreload, directScorePreload, grabPickup2, collectPickup2, collectPickup2Chain, scorePickup2, openGate, collectPickupGate, openGateB, collectPickupGateB, scorePickupGateB, scorePickupGate, grabPickup1, collectPickup1, collectPickup1Chain, scorePickup1, grabPickup3, collectPickup3, collectPickup3Chain,  scorePickup3;
     void buildPaths() {
@@ -411,7 +411,11 @@ public class SortAuto extends OpMode{
                         sorterServo.setPosition(sorterServoOpenRight);
                     } else {
                         follower.followPath(collectPickup2, sortPathSpeed, true);
-                        sorterServo.setPosition(sorterServoOpenLeft);
+                        if (!(detectedID == 23)) {
+                            sorterServo.setPosition(sorterServoOpenLeft);
+                        } else {
+                            sorterServo.setPosition(sorterServoOpenRight);
+                        }
                     }
                     setPathState(4);
                 }
@@ -422,6 +426,12 @@ public class SortAuto extends OpMode{
                 }
                 if (follower.getPose().getX() < firstBallXBlue && detectedID == 21 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 23 && colorAlliance == 1) {
+                    sorterServo.setPosition(sorterServoOpenLeft);
+                }
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 23 && colorAlliance == 2) {
+                    sorterServo.setPosition(sorterServoOpenLeft);
                 }
                 if (follower.getPose().getX() > secondBallXRed && detectedID == 23 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
@@ -446,7 +456,7 @@ public class SortAuto extends OpMode{
             case 6:
                 if (!follower.isBusy()) {
                     if ((detectedID == 23) && (launchState != LaunchState.LAUNCHED)) {
-                        launch(1, 1);
+                        launch(1, 2);
                     } else if ((detectedID == 21) && (launchState != LaunchState.LAUNCHED)) {
                         launch(1, 2);
                     } else if (launchState != LaunchState.LAUNCHED) {
@@ -501,7 +511,7 @@ public class SortAuto extends OpMode{
                 break;
             case 11:
                 if (!follower.isBusy()) {
-                    if (detectedID == 23) {
+                    if (!(detectedID == 22)) {
                         follower.followPath(collectPickup1, intakePathSpeed, true);
                         sorterServo.setPosition(sorterServoOpenRight);
                     } else {
@@ -518,12 +528,6 @@ public class SortAuto extends OpMode{
                 if (follower.getPose().getX() < firstBallXBlue && detectedID == 22 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > secondBallXRed && detectedID == 21 && colorAlliance == 1) {
-                    sorterServo.setPosition(sorterServoOpenRight);
-                }
-                if (follower.getPose().getX() < secondBallXBlue && detectedID == 21 && colorAlliance == 2) {
-                    sorterServo.setPosition(sorterServoOpenRight);
-                }
                 if (!follower.isBusy()) {
                     follower.followPath(scorePickup1, true);
                     launch(0, -1);
@@ -533,7 +537,7 @@ public class SortAuto extends OpMode{
             case 13:
                 if (!follower.isBusy()) {
                     if ((detectedID == 21) && (launchState != LaunchState.LAUNCHED)) {
-                        launch(1, 1);
+                        launch(1, 0);
                     } else if ((detectedID == 22) && (launchState != LaunchState.LAUNCHED)) {
                         launch(1, 2);
                     } else if (launchState != LaunchState.LAUNCHED) {
@@ -553,7 +557,11 @@ public class SortAuto extends OpMode{
                         follower.followPath(collectPickup3, intakePathSpeed, true);
                         sorterServo.setPosition(sorterServoOpenRight);
                     } else {
-                        follower.followPath(collectPickup3, sortPathSpeed, true);
+                        if (detectedID == 22) {
+                            follower.followPath(collectPickup3, 0.3, true);
+                        } else {
+                            follower.followPath(collectPickup3, sortPathSpeed, true);
+                        }
                         sorterServo.setPosition(sorterServoOpenLeft);
                     }
                     setPathState(15);
@@ -566,11 +574,17 @@ public class SortAuto extends OpMode{
                 if (follower.getPose().getX() < firstBallXBlue && detectedID == 23 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() > secondBallXRed && detectedID == 22 && colorAlliance == 1) {
+                if (follower.getPose().getX() > firstBallXRed && detectedID == 22 && colorAlliance == 1) {
                     sorterServo.setPosition(sorterServoOpenRight);
                 }
-                if (follower.getPose().getX() < secondBallXRed && detectedID == 22 && colorAlliance == 2) {
+                if (follower.getPose().getX() < firstBallXBlue && detectedID == 22 && colorAlliance == 2) {
                     sorterServo.setPosition(sorterServoOpenRight);
+                }
+                if (follower.getPose().getX() > secondBallXRed && detectedID == 22 && colorAlliance == 1) {
+                    sorterServo.setPosition(sorterServoOpenLeft);
+                }
+                if (follower.getPose().getX() < secondBallXBlue && detectedID == 22 && colorAlliance == 2) {
+                    sorterServo.setPosition(sorterServoOpenLeft);
                 }
                 if (!follower.isBusy()) {
                     turretScore = parkTurretEncoderPosition;
