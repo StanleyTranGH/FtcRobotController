@@ -3,11 +3,15 @@ import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
+import com.pedropathing.paths.HeadingInterpolator;
+import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -39,6 +43,7 @@ public class MainTeleopNew extends OpMode {
     public static Pose blueShootPose = new Pose(100, 100, Math.toRadians(0));
     public static Pose redShootPose = blueShootPose.mirror();
     public Pose shootPose;
+    private Supplier<PathChain> pathChain;
 
     /* Motors & Servos */
     DcMotor intakeMotor;
@@ -48,8 +53,8 @@ public class MainTeleopNew extends OpMode {
     Servo shooterGateServo;
     Servo sorterServo;
     Servo gateServo;
-    Servo liftServoLeft;
-    Servo liftServoRight;
+    CRServo liftServoLeft;
+    CRServo liftServoRight;
     Servo hoodServo;
     Limelight3A limelight;
 
@@ -124,6 +129,8 @@ public class MainTeleopNew extends OpMode {
         sorterServo = hardwareMap.get(Servo.class, "sorterServo");
         gateServo = hardwareMap.get(Servo.class, "gateServo");
         hoodServo = hardwareMap.get(Servo.class, "hoodServo");
+        liftServoLeft = hardwareMap.get(CRServo.class, "liftServoLeft");
+        liftServoRight = hardwareMap.get(CRServo.class, "liftServoRight");
 
         // Set Hardware Modes
         launcher1.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -203,6 +210,11 @@ public class MainTeleopNew extends OpMode {
             parkPose = blueParkPose;
             shootPose = blueShootPose;
         }
+
+        pathChain = () -> follower.pathBuilder() //Lazy Curve Generation
+                .addPath(new Path(new BezierLine(follower::getPose, parkPose)))
+                .setHeadingInterpolation(HeadingInterpolator.linearFromPoint(follower::getHeading, Math.toRadians(45), 0.99))
+                .build();
 
         /* Start Teleop Drive */
         follower.startTeleopDrive();
@@ -370,8 +382,34 @@ public class MainTeleopNew extends OpMode {
             launcher2.setPower(STOP_SPEED);
         }
 
-        if(gamepad1.startWasPressed()) {
+        if(gamepad1.startWasPressed() && !slowMode) {
             robotCentricOn = !robotCentricOn;
+        } else if(gamepad1.start && slowMode) {
+            // LIFT HERE
+            liftServoLeft.setPower(1);
+            liftServoRight.setPower(-1);
+        }
+
+        if(!gamepad1.start) {
+            liftServoLeft.setPower(0);
+            liftServoRight.setPower(0);
+        }
+
+        if (gamepad1.leftBumperWasPressed()) {
+            slowMode = !slowMode;
+        }
+
+        //Stop automated following if the follower is done
+        if (automatedDrive && (gamepad1.dpadUpWasPressed() || !follower.isBusy())) {
+            follower.startTeleopDrive();
+            automatedDrive = false;
+        } else if (gamepad1.dpadUpWasPressed()) {
+            follower.followPath(pathChain.get());
+            automatedDrive = true;
+        }
+
+        if(gamepad1.dpadDownWasPressed()) {
+            follower.setHeading(0);
         }
 
         telemetry.addLine("-------- PATHING --------");
@@ -394,6 +432,7 @@ public class MainTeleopNew extends OpMode {
         telemetry.addData("Turret Target Position", turretTargetPosition);
         telemetry.addData("Turret Current Position", turretMotor.getCurrentPosition());
         telemetry.addData("Hood Servo Position", hoodTargetPosition);
+        telemetry.addData("tx", limelight.getLatestResult().getTx());
     }
     double calculateRobotDistanceFromGoal(double currentX, double currentY, double headingRad, double goalX, double goalY) {
         // Goal coordinates
@@ -464,9 +503,14 @@ public class MainTeleopNew extends OpMode {
         while (angle < -180) angle += 360;
         return angle;
     }
-    public void recalibratePoseLimelight() {
 
+    // Keep this helper somewhere in your code
+    public double wrapAngle(double angle) {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
     }
+
     public void calculateSOTM() {
         double currentHoodAngle = hoodTargetPosition;
 
