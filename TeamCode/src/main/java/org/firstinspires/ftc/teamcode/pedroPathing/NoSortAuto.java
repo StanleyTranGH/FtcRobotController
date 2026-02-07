@@ -116,7 +116,7 @@ public class NoSortAuto extends OpMode{
     private final Pose openGatePose = new Pose(128, 66, Math.toRadians(0)); // Opens Gate
     private final Pose collectGatePose = new Pose(135, 60, Math.toRadians(35)); // Collects from Gate
     private final Pose openGatePoseB = new Pose(125, 56, Math.toRadians(27)); // Pre open gate
-    private final Pose collectGatePoseB = new Pose(133.77, 59.59, Math.toRadians(29.96)); // Collects from Gate directly with open
+    private final Pose collectGatePoseB = new Pose(132.77, 59.59, Math.toRadians(29.96)); // Collects from Gate directly with open
     private final Pose scoreGateControlPose = new Pose(86, 55); // Avoid gate and 1 to score Gate
     private final Pose pickup1Pose = new Pose(101, 83, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
     private final Pose collect1ControlPose = new Pose(87, 77); // just to ensure that we intake correctly, it might be optional lowkey
