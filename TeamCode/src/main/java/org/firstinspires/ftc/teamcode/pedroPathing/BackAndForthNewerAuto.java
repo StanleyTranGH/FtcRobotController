@@ -96,9 +96,9 @@ public class BackAndForthNewerAuto extends OpMode {
     private int pathState; // todo: use visualizer find poses
     private Pose startPose = new Pose(80.7, 9, Math.toRadians(0)); // start pose
     private Pose shootPose = new Pose(87, 16, Math.toRadians(0)); // shoot pose
-    private final Pose collectPickup1Pose = new Pose(133, 10, Math.toRadians(0)); // collect 1st set of artifacts in loading zone
+    private final Pose collectPickup1Pose = new Pose(133, 9.2, Math.toRadians(0)); // collect 1st set of artifacts in loading zone
     private final Pose collectPickup1ReloadPose = new Pose(125, 12, Math.toRadians(0)); // ensure we actually intake them, i saw other teams do ts
-    private final Pose collectPickup1BPose = new Pose(133, 15, Math.toRadians(5)); //
+    private final Pose collectPickup1BPose = new Pose(133, 14, Math.toRadians(5)); //
     private final Pose collectExtraAPose = new Pose(133, 10.3, Math.toRadians(15)); //
     private final Pose collectExtraReloadPose = new Pose(118, 18, Math.toRadians(20)); //
     private final Pose collectExtraBPose = new Pose(134, 23, Math.toRadians(20)); //
